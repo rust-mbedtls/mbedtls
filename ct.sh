@@ -7,8 +7,6 @@ then
     rm -rf ./target
 fi
 
-cd "./mbedtls"
-
 cargo test
 cargo test --features spin_threading
 cargo test --features rust_threading
