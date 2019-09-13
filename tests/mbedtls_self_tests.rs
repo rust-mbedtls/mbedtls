@@ -10,12 +10,12 @@ extern crate mbedtls;
 extern crate mbedtls_sys;
 
 #[cfg(any(not(feature = "std"), target_env = "sgx"))]
-unsafe fn log(msg: *const mbedtls_sys::types::raw_types::c_char) {
+unsafe fn log(msg: *const mbedtls_sys::types::raw::c_char) {
     print!("{}", std::ffi::CStr::from_ptr(msg).to_string_lossy());
 }
 
 #[cfg(any(not(feature = "std"), target_env = "sgx"))]
-fn rand() -> mbedtls_sys::types::raw_types::c_int {
+fn rand() -> mbedtls_sys::types::raw::c_int {
     3 // Only used for RSA self test
 }
 

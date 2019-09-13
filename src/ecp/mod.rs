@@ -17,10 +17,10 @@ use crate::bignum::Mpi;
 use crate::pk::EcGroupId;
 
 define!(
-    #[c_ty(ecp_group)]
+    #[c_ty(mbedtls_ecp_group)]
     struct EcGroup;
-    const init: fn() -> Self = ecp_group_init;
-    const drop: fn(&mut Self) = ecp_group_free;
+    const init: fn() -> Self = mbedtls_ecp_group_init;
+    const drop: fn(&mut Self) = mbedtls_ecp_group_free;
     impl<'a> Into<ptr> {}
 );
 
@@ -28,12 +28,12 @@ impl Clone for EcGroup {
     fn clone(&self) -> Self {
         fn copy_group(group: &EcGroup) -> Result<EcGroup> {
             /*
-            ecp_group_copy only works for named groups, for custom groups we
+            mbedtls_ecp_group_copy only works for named groups, for custom groups we
             must perform the copy manually.
             */
             if group.group_id()? != EcGroupId::None {
                 let mut ret = EcGroup::init();
-                unsafe { ecp_group_copy(ret.handle_mut(), group.handle()) }.into_result()?;
+                unsafe { mbedtls_ecp_group_copy(ret.handle_mut(), group.handle()) }.into_result()?;
                 Ok(ret)
             } else {
                 let generator = group.generator()?;
@@ -75,7 +75,7 @@ impl TryFrom<EcGroupId> for EcGroup {
 impl EcGroup {
     pub fn new(group: EcGroupId) -> Result<EcGroup> {
         let mut ret = Self::init();
-        unsafe { ecp_group_load(&mut ret.inner, group.into()) }.into_result()?;
+        unsafe { mbedtls_ecp_group_load(&mut ret.inner, group.into()) }.into_result()?;
         Ok(ret)
     }
 
@@ -120,13 +120,13 @@ impl EcGroup {
             ret.inner.N = order.into_inner();
             ret.inner.G.X = g_x.into_inner();
             ret.inner.G.Y = g_y.into_inner();
-            mpi_lset(&mut ret.inner.G.Z, 1);
+            mbedtls_mpi_lset(&mut ret.inner.G.Z, 1);
         }
 
         /*
         Test that the provided generator satisfies the curve equation
          */
-        if unsafe { ecp_check_pubkey(&ret.inner, &ret.inner.G) } != 0 {
+        if unsafe { mbedtls_ecp_check_pubkey(&ret.inner, &ret.inner.G) } != 0 {
             return Err(Error::EcpBadInputData);
         }
 
@@ -140,7 +140,7 @@ impl EcGroup {
         let mut g_m = EcPoint::init(); // will be G*order
 
         unsafe {
-            ecp_muladd(
+            mbedtls_ecp_muladd(
                 &mut ret.inner,
                 &mut g_m.inner,
                 two.handle(),
@@ -151,7 +151,7 @@ impl EcGroup {
         }
         .into_result()?;
 
-        let is_zero = unsafe { ecp_is_zero(&g_m.inner as *const ecp_point as *mut ecp_point) };
+        let is_zero = unsafe { mbedtls_ecp_is_zero(&g_m.inner as *const mbedtls_ecp_point as *mut mbedtls_ecp_point) };
 
         if is_zero != 1 {
             return Err(Error::EcpBadInputData);
@@ -200,26 +200,26 @@ impl EcGroup {
     }
 
     pub fn contains_point(&self, point: &EcPoint) -> Result<bool> {
-        match unsafe { ecp_check_pubkey(&self.inner, &point.inner) } {
+        match unsafe { mbedtls_ecp_check_pubkey(&self.inner, &point.inner) } {
             0 => Ok(true),
-            ERR_ECP_INVALID_KEY => Ok(false),
+            MBEDTLS_ERR_ECP_INVALID_KEY => Ok(false),
             err => Err(Error::from_mbedtls_code(err)),
         }
     }
 }
 
 define!(
-    #[c_ty(ecp_point)]
+    #[c_ty(mbedtls_ecp_point)]
     struct EcPoint;
-    const init: fn() -> Self = ecp_point_init;
-    const drop: fn(&mut Self) = ecp_point_free;
+    const init: fn() -> Self = mbedtls_ecp_point_init;
+    const drop: fn(&mut Self) = mbedtls_ecp_point_free;
     impl<'a> Into<ptr> {}
 );
 
 impl Clone for EcPoint {
     fn clone(&self) -> Self {
         let mut ret = Self::init();
-        unsafe { ecp_copy(&mut ret.inner, &self.inner) }
+        unsafe { mbedtls_ecp_copy(&mut ret.inner, &self.inner) }
             .into_result()
             .expect("ecp_copy success");
         ret
@@ -235,13 +235,13 @@ impl PartialEq for EcPoint {
 impl EcPoint {
     pub fn new() -> Result<EcPoint> {
         let mut ret = Self::init();
-        unsafe { ecp_set_zero(&mut ret.inner) }.into_result()?;
+        unsafe { mbedtls_ecp_set_zero(&mut ret.inner) }.into_result()?;
         Ok(ret)
     }
 
-    pub(crate) fn copy(other: &ecp_point) -> Result<EcPoint> {
+    pub(crate) fn copy(other: &mbedtls_ecp_point) -> Result<EcPoint> {
         let mut ret = Self::init();
-        unsafe { ecp_copy(&mut ret.inner, other) }.into_result()?;
+        unsafe { mbedtls_ecp_copy(&mut ret.inner, other) }.into_result()?;
         Ok(ret)
     }
 
@@ -275,7 +275,7 @@ impl EcPoint {
             EcPoint::from_components(x, y)
         } else {
             let mut ret = Self::init();
-            unsafe { ecp_point_read_binary(&group.inner, &mut ret.inner, bin.as_ptr(), bin.len()) }
+            unsafe { mbedtls_ecp_point_read_binary(&group.inner, &mut ret.inner, bin.as_ptr(), bin.len()) }
                 .into_result()?;
             Ok(ret)
         }
@@ -287,7 +287,7 @@ impl EcPoint {
         unsafe {
             ret.inner.X = x.into_inner();
             ret.inner.Y = y.into_inner();
-            mpi_lset(&mut ret.inner.Z, 1).into_result()?;
+            mbedtls_mpi_lset(&mut ret.inner.Z, 1).into_result()?;
         };
 
         Ok(ret)
@@ -306,7 +306,7 @@ impl EcPoint {
         mbedtls_ecp_is_zero takes arg as non-const for no particular reason
         use this unsafe cast here to avoid having to take &mut self
          */
-        match unsafe { ecp_is_zero(&self.inner as *const ecp_point as *mut ecp_point) } {
+        match unsafe { mbedtls_ecp_is_zero(&self.inner as *const mbedtls_ecp_point as *mut mbedtls_ecp_point) } {
             0 => Ok(false),
             1 => Ok(true),
             _ => Err(Error::EcpInvalidKey),
@@ -320,7 +320,7 @@ impl EcPoint {
         let mut ret = Self::init();
 
         unsafe {
-            ecp_mul(
+            mbedtls_ecp_mul(
                 &mut group.inner,
                 &mut ret.inner,
                 k.handle(),
@@ -353,7 +353,7 @@ impl EcPoint {
         }
 
         unsafe {
-            ecp_muladd(
+            mbedtls_ecp_muladd(
                 &mut group.inner,
                 &mut ret.inner,
                 k1.handle(),
@@ -368,11 +368,11 @@ impl EcPoint {
     }
 
     pub fn eq(&self, other: &EcPoint) -> Result<bool> {
-        let r = unsafe { ecp_point_cmp(&self.inner, &other.inner) };
+        let r = unsafe { mbedtls_ecp_point_cmp(&self.inner, &other.inner) };
 
         match r {
             0 => Ok(true),
-            ERR_ECP_BAD_INPUT_DATA => Ok(false),
+            MBEDTLS_ERR_ECP_BAD_INPUT_DATA => Ok(false),
             x => Err(Error::from_mbedtls_code(x)),
         }
     }
@@ -391,13 +391,13 @@ impl EcPoint {
         let mut buf = vec![0u8; 133];
 
         let format = if compressed {
-            ECP_PF_COMPRESSED
+            MBEDTLS_ECP_PF_COMPRESSED
         } else {
-            ECP_PF_UNCOMPRESSED
+            MBEDTLS_ECP_PF_UNCOMPRESSED
         };
 
         unsafe {
-            ecp_point_write_binary(
+            mbedtls_ecp_point_write_binary(
                 &group.inner,
                 &self.inner,
                 format,

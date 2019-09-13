@@ -20,35 +20,35 @@ use crate::hash::Type as MdType;
 use crate::rng::Random;
 
 define!(
-    #[c_ty(x509_csr)]
+    #[c_ty(mbedtls_x509_csr)]
     /// Certificate Signing Request
     struct Csr;
-    const init: fn() -> Self = x509_csr_init;
-    const drop: fn(&mut Self) = x509_csr_free;
+    const init: fn() -> Self = mbedtls_x509_csr_init;
+    const drop: fn(&mut Self) = mbedtls_x509_csr_free;
 );
 
 impl Csr {
     pub fn from_der(der: &[u8]) -> Result<Csr> {
         let mut ret = Self::init();
-        unsafe { x509_csr_parse_der(&mut ret.inner, der.as_ptr(), der.len()) }.into_result()?;
+        unsafe { mbedtls_x509_csr_parse_der(&mut ret.inner, der.as_ptr(), der.len()) }.into_result()?;
         Ok(ret)
     }
 
     pub fn from_pem(pem: &[u8]) -> Result<Csr> {
         let mut ret = Self::init();
-        unsafe { x509_csr_parse(&mut ret.inner, pem.as_ptr(), pem.len()) }.into_result()?;
+        unsafe { mbedtls_x509_csr_parse(&mut ret.inner, pem.as_ptr(), pem.len()) }.into_result()?;
         Ok(ret)
     }
 
     pub fn subject(&self) -> Result<String> {
         alloc_string_repeat(|buf, size| unsafe {
-            x509_dn_gets(buf, size, &self.inner.subject)
+            mbedtls_x509_dn_gets(buf, size, &self.inner.subject)
         })
     }
 
     pub fn subject_raw(&self) -> Result<Vec<u8>> {
         alloc_vec_repeat(
-            |buf, size| unsafe { x509_dn_gets(buf as _, size, &self.inner.subject) },
+            |buf, size| unsafe { mbedtls_x509_dn_gets(buf as _, size, &self.inner.subject) },
             false,
         )
     }
@@ -65,7 +65,7 @@ impl Csr {
 impl fmt::Debug for Csr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match alloc_string_repeat(|buf, size| unsafe {
-            x509_csr_info(buf, size, b"\0".as_ptr() as *const _, &self.inner)
+            mbedtls_x509_csr_info(buf, size, b"\0".as_ptr() as *const _, &self.inner)
         }) {
             Err(_) => Err(fmt::Error),
             Ok(s) => f.write_str(&s),
@@ -74,15 +74,15 @@ impl fmt::Debug for Csr {
 }
 
 define!(
-    #[c_ty(x509write_csr)]
+    #[c_ty(mbedtls_x509write_csr)]
     struct Builder<'a>;
-    pub const new: fn() -> Self = x509write_csr_init;
-    const drop: fn(&mut Self) = x509write_csr_free;
+    pub const new: fn() -> Self = mbedtls_x509write_csr_init;
+    const drop: fn(&mut Self) = mbedtls_x509write_csr_free;
 );
 
 impl<'a> Builder<'a> {
     unsafe fn subject_with_nul_unchecked(&mut self, subject: &[u8]) -> Result<&mut Self> {
-        x509write_csr_set_subject_name(&mut self.inner, subject.as_ptr() as *const _).into_result()?;
+        mbedtls_x509write_csr_set_subject_name(&mut self.inner, subject.as_ptr() as *const _).into_result()?;
         Ok(self)
     }
 
@@ -103,29 +103,29 @@ impl<'a> Builder<'a> {
     }
 
     pub fn key(&mut self, key: &'a mut Pk) -> &mut Self {
-        unsafe { x509write_csr_set_key(&mut self.inner, key.into()) };
+        unsafe { mbedtls_x509write_csr_set_key(&mut self.inner, key.into()) };
         self
     }
 
     pub fn signature_hash(&mut self, md: MdType) -> &mut Self {
-        unsafe { x509write_csr_set_md_alg(&mut self.inner, md.into()) };
+        unsafe { mbedtls_x509write_csr_set_md_alg(&mut self.inner, md.into()) };
         self
     }
 
     pub fn key_usage(&mut self, usage: crate::x509::KeyUsage) -> Result<&mut Self> {
         let usage = usage.bits();
         if (usage & !0xfe) != 0 {
-            // according to x509write_**crt**_set_key_usage
+            // according to mbedtls_x509write_**crt**_set_key_usage
             return Err(Error::X509FeatureUnavailable);
         }
 
-        unsafe { x509write_csr_set_key_usage(&mut self.inner, (usage & 0xfe) as u8) }.into_result()?;
+        unsafe { mbedtls_x509write_csr_set_key_usage(&mut self.inner, (usage & 0xfe) as u8) }.into_result()?;
         Ok(self)
     }
 
     pub fn extension(&mut self, oid: &[u8], val: &[u8]) -> Result<&mut Self> {
         unsafe {
-            x509write_csr_set_extension(
+            mbedtls_x509write_csr_set_extension(
                 &mut self.inner,
                 oid.as_ptr() as *const _,
                 oid.len(),
@@ -142,7 +142,7 @@ impl<'a> Builder<'a> {
         rng: &mut F,
     ) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            x509write_csr_der(
+            mbedtls_x509write_csr_der(
                 &mut self.inner,
                 buf.as_mut_ptr(),
                 buf.len(),
@@ -160,7 +160,7 @@ impl<'a> Builder<'a> {
     pub fn write_der_vec<F: Random>(&mut self, rng: &mut F) -> Result<Vec<u8>> {
         alloc_vec_repeat(
             |buf, size| unsafe {
-                x509write_csr_der(&mut self.inner, buf, size, Some(F::call), rng.data_ptr())
+                mbedtls_x509write_csr_der(&mut self.inner, buf, size, Some(F::call), rng.data_ptr())
             },
             true,
         )
@@ -172,7 +172,7 @@ impl<'a> Builder<'a> {
         rng: &mut F,
     ) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            x509write_csr_der(
+            mbedtls_x509write_csr_der(
                 &mut self.inner,
                 buf.as_mut_ptr(),
                 buf.len(),
@@ -189,7 +189,7 @@ impl<'a> Builder<'a> {
 
     pub fn write_pem_string<F: Random>(&mut self, rng: &mut F) -> Result<String> {
         alloc_string_repeat(|buf, size| unsafe {
-            match x509write_csr_pem(
+            match mbedtls_x509write_csr_pem(
                 &mut self.inner,
                 buf as _,
                 size,
@@ -204,7 +204,7 @@ impl<'a> Builder<'a> {
 }
 
 // TODO
-// x509write_csr_set_ns_cert_type
+// mbedtls_x509write_csr_set_ns_cert_type
 //
 
 #[cfg(test)]

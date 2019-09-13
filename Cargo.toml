@@ -2,7 +2,6 @@
 name = "mbedtls"
 version = "0.4.0"
 authors = ["Jethro Beekman <jethro@fortanix.com>"]
-build = "build.rs"
 edition = "2018"
 license = "Apache-2.0/GPL-2.0+"
 description = """
@@ -18,56 +17,34 @@ documentation = "https://docs.rs/mbedtls/"
 keywords = ["MbedTLS","mbed","TLS","SSL","cryptography"]
 
 [dependencies]
-bitflags = "1"
-chrono = "0.4"
 core_io = { version = "0.1", features = ["collections"], optional = true }
-spin = { version = "0.4.0", default-features = false, optional = true }
-serde = { version = "1.0.7", default-features = false }
-serde_derive = "1.0.7"
-byteorder = "1.0.0"
-yasna = { version = "0.2", optional = true }
-block-modes = { version = "0.3", optional = true }
-rc2 = { version = "0.3", optional = true }
-
-[target.x86_64-fortanix-unknown-sgx.dependencies]
-rs-libc = "0.1.0"
-
-[dependencies.mbedtls-sys-auto]
-version = "2.18.0"
-default-features = false
-features = ["custom_printf"]
-path = "../mbedtls-sys"
+spin = { version = "0.5.2", default-features = false, optional = true }
+mbedtls-sys = { git = "https://github.com/rust-mbedtls/mbedtls-sys" }
+serde = { version = "1.0.101", default-features = false }
+yasna = { version = "0.3.1", optional = true }
+serde_derive = "1.0.101"
+byteorder = "1.3.2"
+bitflags = "1.1.0"
+chrono = "0.4.9"
 
 [dev-dependencies]
-libc = "0.2.0"
-rand = "0.4.0"
-serde_cbor = "0.6"
+rand_xorshift = "0.2.0"
+serde_cbor = "0.10.1"
+libc = "0.2.62"
+rand = "0.7.2"
 hex = "0.3"
-
-[build-dependencies]
-cc = "1.0"
 
 [features]
 # Features are documented in the README
-default = ["std", "aesni", "time", "padlock", "legacy_protocols", "use_libc"]
-std = ["mbedtls-sys-auto/std","serde/std"]
+default = ["std"]
+std = ["serde/std"]
 threading = []
-pthread = ["threading","std","mbedtls-sys-auto/pthread"]
-spin_threading = ["threading","spin","mbedtls-sys-auto/custom_threading"]
-sgx = ["std", "rust_threading", "rdrand", "force_aesni_support"]
-rust_threading = ["threading", "mbedtls-sys-auto/custom_threading", "std"]
-force_aesni_support = ["mbedtls-sys-auto/custom_has_support","mbedtls-sys-auto/aes_alt","aesni"]
+pthread = ["threading","std"]
+spin_threading = ["threading","spin"]
+sgx = ["std", "rust_threading", "rdrand"]
+rust_threading = ["threading", "std"]
 rdrand = []
-use_libc = ["mbedtls-sys-auto/libc"]
-custom_gmtime_r = ["mbedtls-sys-auto/custom_gmtime_r"]
-custom_time = ["mbedtls-sys-auto/custom_time"]
-aesni = ["mbedtls-sys-auto/aesni"]
-zlib = ["mbedtls-sys-auto/zlib"]
-time = ["mbedtls-sys-auto/time"]
-padlock = ["mbedtls-sys-auto/padlock"]
-legacy_protocols = ["mbedtls-sys-auto/legacy_protocols"]
 pkcs12 = ["yasna"]
-pkcs12_rc2 = ["pkcs12", "rc2", "block-modes"]
 
 [[example]]
 name = "client"

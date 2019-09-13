@@ -53,6 +53,7 @@ pub use crate::error::{Error, Result};
 pub mod cipher;
 pub mod ecp;
 pub mod hash;
+pub mod kw;
 pub mod pk;
 pub mod rng;
 pub mod self_test;
@@ -84,7 +85,7 @@ pub extern "C" fn mbedtls_aesni_has_support(_what: u32) -> i32 {
 #[cfg(feature = "force_aesni_support")]
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn mbedtls_internal_aes_encrypt(_ctx: *mut mbedtls_sys::types::raw_types::c_void,
+pub extern "C" fn mbedtls_internal_aes_encrypt(_ctx: *mut mbedtls_sys::types::raw::c_void,
                                                _input: *const u8,
                                                _output: *mut u8) -> i32 {
     panic!("AES-NI support is forced but the T-tables code was invoked")
@@ -94,7 +95,7 @@ pub extern "C" fn mbedtls_internal_aes_encrypt(_ctx: *mut mbedtls_sys::types::ra
 #[cfg(feature = "force_aesni_support")]
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn mbedtls_internal_aes_decrypt(_ctx: *mut mbedtls_sys::types::raw_types::c_void,
+pub extern "C" fn mbedtls_internal_aes_decrypt(_ctx: *mut mbedtls_sys::types::raw::c_void,
                                                _input: *const u8,
                                                _output: *mut u8) -> i32 {
     panic!("AES-NI support is forced but the T-tables code was invoked")

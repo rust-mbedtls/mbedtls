@@ -8,9 +8,7 @@
 
 #[cfg(not(feature = "std"))]
 use crate::alloc_prelude::*;
-use mbedtls_sys::*;
-
-use mbedtls_sys::types::raw_types::c_void;
+use mbedtls_sys::{*, types::raw::*};
 
 use core::ptr;
 use core::convert::TryInto;
@@ -36,34 +34,34 @@ pub use self::ec::{EcGroupId, ECDSA_MAX_LEN};
 pub use crate::ecp::EcGroup;
 
 // SHA-256("Fortanix")[:4]
-const CUSTOM_PK_TYPE: pk_type_t = 0x8b205408 as pk_type_t;
+const CUSTOM_PK_TYPE: mbedtls_pk_type_t = 0x8b205408 as mbedtls_pk_type_t;
 
 define!(
-    #[c_ty(pk_type_t)]
+    #[c_ty(mbedtls_pk_type_t)]
     #[derive(Copy, Clone, PartialEq, Debug)]
     enum Type {
-        None = PK_NONE,
-        Rsa = PK_RSA,
-        Eckey = PK_ECKEY,
-        EckeyDh = PK_ECKEY_DH,
+        None = MBEDTLS_PK_NONE,
+        Rsa = MBEDTLS_PK_RSA,
+        Eckey = MBEDTLS_PK_ECKEY,
+        EckeyDh = MBEDTLS_PK_ECKEY_DH,
         // This type is never returned by the mbedTLS key parsing routines
-        Ecdsa = PK_ECDSA,
-        RsaAlt = PK_RSA_ALT,
-        RsassaPss = PK_RSASSA_PSS,
+        Ecdsa = MBEDTLS_PK_ECDSA,
+        RsaAlt = MBEDTLS_PK_RSA_ALT,
+        RsassaPss = MBEDTLS_PK_RSASSA_PSS,
         Custom = CUSTOM_PK_TYPE,
     }
 );
 
-impl From<pk_type_t> for Type {
-    fn from(inner: pk_type_t) -> Type {
+impl From<mbedtls_pk_type_t> for Type {
+    fn from(inner: mbedtls_pk_type_t) -> Type {
         match inner {
-            PK_NONE => Type::None,
-            PK_RSA => Type::Rsa,
-            PK_ECKEY => Type::Eckey,
-            PK_ECKEY_DH => Type::EckeyDh,
-            PK_ECDSA => Type::Ecdsa,
-            PK_RSA_ALT => Type::RsaAlt,
-            PK_RSASSA_PSS => Type::RsassaPss,
+            MBEDTLS_PK_NONE => Type::None,
+            MBEDTLS_PK_RSA => Type::Rsa,
+            MBEDTLS_PK_ECKEY => Type::Eckey,
+            MBEDTLS_PK_ECKEY_DH => Type::EckeyDh,
+            MBEDTLS_PK_ECDSA => Type::Ecdsa,
+            MBEDTLS_PK_RSA_ALT => Type::RsaAlt,
+            MBEDTLS_PK_RSASSA_PSS => Type::RsassaPss,
             CUSTOM_PK_TYPE => Type::Custom,
             _ => panic!("Invalid PK type"),
         }
@@ -99,23 +97,23 @@ impl CustomPkContext {
     }
 }
 
-extern "C" fn alloc_custom_pk_ctx() -> *mut c_void {
+extern "C" fn alloc_custom_mbedtls_pk_ctx() -> *mut c_void {
     let boxed = Box::new(CustomPkContext::new());
     Box::into_raw(boxed) as *mut c_void
 }
 
-unsafe extern "C" fn free_custom_pk_ctx(p: *mut c_void) {
+unsafe extern "C" fn free_custom_mbedtls_pk_ctx(p: *mut c_void) {
     Box::from_raw(p as *mut CustomPkContext);
 }
 
-extern "C" fn custom_pk_can_do(_t: u32) -> i32 {
+extern "C" fn custom_mbedtls_pk_can_do(_t: u32) -> i32 {
     0
 }
 
-const CUSTOM_PK_INFO: pk_info_t = {
-    pk_info_t {
+const CUSTOM_PK_INFO: mbedtls_pk_info_t = {
+    mbedtls_pk_info_t {
         type_: CUSTOM_PK_TYPE,
-        can_do: Some(custom_pk_can_do),
+        can_do: Some(custom_mbedtls_pk_can_do),
         check_pair_func: None,
         debug_func: None,
         encrypt_func: None,
@@ -124,17 +122,17 @@ const CUSTOM_PK_INFO: pk_info_t = {
         verify_func: None,
         get_bitlen: None,
         name: b"\0" as *const u8 as *const i8,
-        ctx_alloc_func: Some(alloc_custom_pk_ctx),
-        ctx_free_func: Some(free_custom_pk_ctx),
+        ctx_alloc_func: Some(alloc_custom_mbedtls_pk_ctx),
+        ctx_free_func: Some(free_custom_mbedtls_pk_ctx),
     }
 };
 
 define!(
-    #[c_ty(pk_context)]
+    #[c_ty(mbedtls_pk_context)]
     #[repr(C)]
     struct Pk;
-    const init: fn() -> Self = pk_init;
-    const drop: fn(&mut Self) = pk_free;
+    const init: fn() -> Self = mbedtls_pk_init;
+    const drop: fn(&mut Self) = mbedtls_pk_free;
     impl<'a> Into<ptr> {}
     impl<'a> UnsafeFrom<ptr> {}
 );
@@ -146,7 +144,7 @@ impl Pk {
     pub fn from_private_key(key: &[u8], password: Option<&[u8]>) -> Result<Pk> {
         let mut ret = Self::init();
         unsafe {
-            pk_parse_key(
+            mbedtls_pk_parse_key(
                 &mut ret.inner,
                 key.as_ptr(),
                 key.len(),
@@ -163,15 +161,15 @@ impl Pk {
     /// When calling on PEM-encoded data, `key` must be NULL-terminated
     pub fn from_public_key(key: &[u8]) -> Result<Pk> {
         let mut ret = Self::init();
-        unsafe { pk_parse_public_key(&mut ret.inner, key.as_ptr(), key.len()).into_result()? };
+        unsafe { mbedtls_pk_parse_public_key(&mut ret.inner, key.as_ptr(), key.len()).into_result()? };
         Ok(ret)
     }
 
     pub fn generate_rsa<F: Random>(rng: &mut F, bits: u32, exponent: u32) -> Result<Pk> {
         let mut ret = Self::init();
         unsafe {
-            pk_setup(&mut ret.inner, pk_info_from_type(Type::Rsa.into())).into_result()?;
-            rsa_gen_key(
+            mbedtls_pk_setup(&mut ret.inner, mbedtls_pk_info_from_type(Type::Rsa.into())).into_result()?;
+            mbedtls_rsa_gen_key(
                 ret.inner.pk_ctx as *mut _,
                 Some(F::call),
                 rng.data_ptr(),
@@ -187,10 +185,10 @@ impl Pk {
         let mut ret = Self::init();
         unsafe {
             let curve : EcGroup = curve.try_into().map_err(|e| e.into())?;
-            pk_setup(&mut ret.inner, pk_info_from_type(Type::Eckey.into())).into_result()?;
-            let ctx = ret.inner.pk_ctx as *mut ecp_keypair;
+            mbedtls_pk_setup(&mut ret.inner, mbedtls_pk_info_from_type(Type::Eckey.into())).into_result()?;
+            let ctx = ret.inner.pk_ctx as *mut mbedtls_ecp_keypair;
             (*ctx).grp = curve.clone().into_inner();
-            ecp_gen_keypair(
+            mbedtls_ecp_gen_keypair(
                 &mut (*ctx).grp,
                 &mut (*ctx).d,
                 &mut (*ctx).Q,
@@ -207,8 +205,8 @@ impl Pk {
         let curve_generator = curve.generator()?;
         let public_point = curve_generator.mul(&mut curve, &private_key)?;
         unsafe {
-            pk_setup(&mut ret.inner, pk_info_from_type(Type::Eckey.into())).into_result()?;
-            let ctx = ret.inner.pk_ctx as *mut ecp_keypair;
+            mbedtls_pk_setup(&mut ret.inner, mbedtls_pk_info_from_type(Type::Eckey.into())).into_result()?;
+            let ctx = ret.inner.pk_ctx as *mut mbedtls_ecp_keypair;
             (*ctx).grp = curve.into_inner();
             (*ctx).d = private_key.into_inner();
             (*ctx).Q = public_point.into_inner();
@@ -219,8 +217,8 @@ impl Pk {
     pub fn public_from_ec_components(curve: EcGroup, public_point: EcPoint) -> Result<Pk> {
         let mut ret = Self::init();
         unsafe {
-            pk_setup(&mut ret.inner, pk_info_from_type(Type::Eckey.into())).into_result()?;
-            let ctx = ret.inner.pk_ctx as *mut ecp_keypair;
+            mbedtls_pk_setup(&mut ret.inner, mbedtls_pk_info_from_type(Type::Eckey.into())).into_result()?;
+            let ctx = ret.inner.pk_ctx as *mut mbedtls_ecp_keypair;
             (*ctx).grp = curve.into_inner();
             (*ctx).Q = public_point.into_inner();
         }
@@ -230,7 +228,7 @@ impl Pk {
     pub fn public_custom_algo(algo_id: &[u64], pk: &[u8]) -> Result<Pk> {
         let mut ret = Self::init();
         unsafe {
-            pk_setup(&mut ret.inner, &CUSTOM_PK_INFO).into_result()?;
+            mbedtls_pk_setup(&mut ret.inner, &CUSTOM_PK_INFO).into_result()?;
             let ctx = ret.inner.pk_ctx as *mut CustomPkContext;
             (*ctx).algo_id = algo_id.to_owned();
             (*ctx).pk = pk.to_owned();
@@ -241,7 +239,7 @@ impl Pk {
     pub fn private_custom_algo(algo_id: &[u64], pk: &[u8], sk: &[u8]) -> Result<Pk> {
         let mut ret = Self::init();
         unsafe {
-            pk_setup(&mut ret.inner, &CUSTOM_PK_INFO).into_result()?;
+            mbedtls_pk_setup(&mut ret.inner, &CUSTOM_PK_INFO).into_result()?;
             let ctx = ret.inner.pk_ctx as *mut CustomPkContext;
             (*ctx).algo_id = algo_id.to_owned();
             (*ctx).pk = pk.to_owned();
@@ -287,14 +285,14 @@ impl Pk {
     /// Panics if the options are not valid for this key type.
     pub fn set_options(&mut self, options: Options) {
         unsafe {
-            match (Type::from(pk_get_type(&self.inner)), options) {
+            match (Type::from(mbedtls_pk_get_type(&self.inner)), options) {
                 (Type::Rsa, Options::Rsa { padding })
                 | (Type::RsassaPss, Options::Rsa { padding }) => {
                     let (padding, hash_id) = match padding {
-                        RsaPadding::Pkcs1V15 => (RSA_PKCS_V15, 0),
-                        RsaPadding::Pkcs1V21 { mgf } => (RSA_PKCS_V21, mgf.into()),
+                        RsaPadding::Pkcs1V15 => (MBEDTLS_RSA_PKCS_V15, 0),
+                        RsaPadding::Pkcs1V21 { mgf } => (MBEDTLS_RSA_PKCS_V21, mgf.into()),
                     };
-                    rsa_set_padding(self.inner.pk_ctx as *mut rsa_context, padding, hash_id as _);
+                    mbedtls_rsa_set_padding(self.inner.pk_ctx as *mut mbedtls_rsa_context, padding, hash_id as _);
                 }
                 _ => panic!("Invalid options for this key type"),
             }
@@ -302,7 +300,7 @@ impl Pk {
     }
 
     pub fn can_do(&self, t: Type) -> bool {
-        if unsafe { pk_can_do(&self.inner, t.into()) } == 0 {
+        if unsafe { mbedtls_pk_can_do(&self.inner, t.into()) } == 0 {
             false
         } else {
             true
@@ -310,14 +308,14 @@ impl Pk {
     }
 
     pub fn check_pair(public: &Self, private: &Self) -> bool {
-        unsafe { pk_check_pair(&public.inner, &private.inner) }
+        unsafe { mbedtls_pk_check_pair(&public.inner, &private.inner) }
             .into_result()
             .is_ok()
     }
 
     /// Key length in bits
-    getter!(len() -> usize = fn pk_get_bitlen);
-    getter!(pk_type() -> Type = fn pk_get_type);
+    getter!(len() -> usize = fn mbedtls_pk_get_bitlen);
+    getter!(pk_type() -> Type = fn mbedtls_pk_get_type);
 
     pub fn curve(&self) -> Result<EcGroupId> {
         match self.pk_type() {
@@ -325,7 +323,7 @@ impl Pk {
             _ => return Err(Error::PkTypeMismatch),
         }
 
-        unsafe { Ok((*(self.inner.pk_ctx as *const ecp_keypair)).grp.id.into()) }
+        unsafe { Ok((*(self.inner.pk_ctx as *const mbedtls_ecp_keypair)).grp.id.into()) }
     }
 
     pub fn curve_oid(&self) -> Result<Vec<u64>> {
@@ -355,7 +353,7 @@ impl Pk {
             EcGroupId::None => {
                 // custom curve, need to read params
                 unsafe {
-                    let ecp = self.inner.pk_ctx as *const ecp_keypair;
+                    let ecp = self.inner.pk_ctx as *const mbedtls_ecp_keypair;
                     let p = Mpi::copy(&(*ecp).grp.P)?;
                     let a = Mpi::copy(&(*ecp).grp.A)?;
                     let b = Mpi::copy(&(*ecp).grp.B)?;
@@ -376,7 +374,7 @@ impl Pk {
             _ => return Err(Error::PkTypeMismatch),
         }
 
-        let q = &unsafe { (*(self.inner.pk_ctx as *const ecp_keypair)).Q };
+        let q = &unsafe { (*(self.inner.pk_ctx as *const mbedtls_ecp_keypair)).Q };
         EcPoint::copy(q)
     }
 
@@ -386,7 +384,7 @@ impl Pk {
             _ => return Err(Error::PkTypeMismatch),
         }
 
-        let d = &unsafe { (*(self.inner.pk_ctx as *const ecp_keypair)).d };
+        let d = &unsafe { (*(self.inner.pk_ctx as *const mbedtls_ecp_keypair)).d };
         Mpi::copy(d)
     }
 
@@ -399,8 +397,8 @@ impl Pk {
         let mut n = Mpi::new(0)?;
 
         unsafe {
-            rsa_export(
-                self.inner.pk_ctx as *const rsa_context,
+            mbedtls_rsa_export(
+                self.inner.pk_ctx as *const mbedtls_rsa_context,
                 n.handle_mut(),
                 ptr::null_mut(),
                 ptr::null_mut(),
@@ -422,8 +420,8 @@ impl Pk {
         let mut p = Mpi::new(0)?;
 
         unsafe {
-            rsa_export(
-                self.inner.pk_ctx as *const rsa_context,
+            mbedtls_rsa_export(
+                self.inner.pk_ctx as *const mbedtls_rsa_context,
                 ptr::null_mut(),
                 p.handle_mut(),
                 ptr::null_mut(),
@@ -445,8 +443,8 @@ impl Pk {
         let mut q = Mpi::new(0)?;
 
         unsafe {
-            rsa_export(
-                self.inner.pk_ctx as *const rsa_context,
+            mbedtls_rsa_export(
+                self.inner.pk_ctx as *const mbedtls_rsa_context,
                 ptr::null_mut(),
                 ptr::null_mut(),
                 q.handle_mut(),
@@ -467,8 +465,8 @@ impl Pk {
 
         let mut e: [u8; 4] = [0, 0, 0, 0];
         unsafe {
-            rsa_export_raw(
-                self.inner.pk_ctx as *const rsa_context,
+            mbedtls_rsa_export_raw(
+                self.inner.pk_ctx as *const mbedtls_rsa_context,
                 ptr::null_mut(),
                 0,
                 ptr::null_mut(),
@@ -486,7 +484,7 @@ impl Pk {
     }
 
     pub fn name(&self) -> Result<&str> {
-        let s = unsafe { crate::private::cstr_to_slice(pk_get_name(&self.inner)) };
+        let s = unsafe { crate::private::cstr_to_slice(mbedtls_pk_get_name(&self.inner)) };
         Ok(::core::str::from_utf8(s)?)
     }
 
@@ -498,7 +496,7 @@ impl Pk {
     ) -> Result<usize> {
         let mut ret = ::core::mem::MaybeUninit::uninit();
         let ret = unsafe {
-            pk_decrypt(
+            mbedtls_pk_decrypt(
                 &mut self.inner,
                 cipher.as_ptr(),
                 cipher.len(),
@@ -521,7 +519,7 @@ impl Pk {
     ) -> Result<usize> {
         let mut ret = ::core::mem::MaybeUninit::uninit();
         let ret = unsafe {
-            pk_encrypt(
+            mbedtls_pk_encrypt(
                 &mut self.inner,
                 plain.as_ptr(),
                 plain.len(),
@@ -568,7 +566,7 @@ impl Pk {
         }
         let mut ret = ::core::mem::MaybeUninit::uninit();
         let ret = unsafe {
-            pk_sign(
+            mbedtls_pk_sign(
                 &mut self.inner,
                 md.into(),
                 hash.as_ptr(),
@@ -605,7 +603,7 @@ impl Pk {
 
             let mut ret = ::core::mem::MaybeUninit::uninit();
             let ret = unsafe {
-                pk_sign(
+                mbedtls_pk_sign(
                     &mut self.inner,
                     md.into(),
                     hash.as_ptr(),
@@ -620,7 +618,7 @@ impl Pk {
             Ok(ret)
         } else if self.pk_type() == Type::Rsa {
             // Reject sign_deterministic being use for PSS
-            if unsafe { (*(self.inner.pk_ctx as *mut rsa_context)).padding } != RSA_PKCS_V15 {
+            if unsafe { (*(self.inner.pk_ctx as *mut mbedtls_rsa_context)).padding } != MBEDTLS_RSA_PKCS_V15 {
                 return Err(Error::PkInvalidAlg);
             }
 
@@ -634,7 +632,7 @@ impl Pk {
 
     pub fn verify(&mut self, md: MdType, hash: &[u8], sig: &[u8]) -> Result<()> {
         unsafe {
-            pk_verify(
+            mbedtls_pk_verify(
                 &mut self.inner,
                 md.into(),
                 hash.as_ptr(),
@@ -671,7 +669,7 @@ impl Pk {
 
     pub fn write_private_der<'buf>(&mut self, buf: &'buf mut [u8]) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            pk_write_key_der(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
+            mbedtls_pk_write_key_der(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
         } {
             Err(Error::Asn1BufTooSmall) => Ok(None),
             Err(e) => Err(e),
@@ -681,14 +679,14 @@ impl Pk {
 
     pub fn write_private_der_vec(&mut self) -> Result<Vec<u8>> {
         crate::private::alloc_vec_repeat(
-            |buf, size| unsafe { pk_write_key_der(&mut self.inner, buf, size) },
+            |buf, size| unsafe { mbedtls_pk_write_key_der(&mut self.inner, buf, size) },
             true,
         )
     }
 
     pub fn write_private_pem<'buf>(&mut self, buf: &'buf mut [u8]) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            pk_write_key_pem(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
+            mbedtls_pk_write_key_pem(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
         } {
             Err(Error::Base64BufferTooSmall) => Ok(None),
             Err(e) => Err(e),
@@ -698,7 +696,7 @@ impl Pk {
 
     pub fn write_private_pem_string(&mut self) -> Result<String> {
         crate::private::alloc_string_repeat(|buf, size| unsafe {
-            match pk_write_key_pem(&mut self.inner, buf as _, size) {
+            match mbedtls_pk_write_key_pem(&mut self.inner, buf as _, size) {
                 0 => crate::private::cstr_to_slice(buf as _).len() as _,
                 r => r,
             }
@@ -707,7 +705,7 @@ impl Pk {
 
     pub fn write_public_der<'buf>(&mut self, buf: &'buf mut [u8]) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            pk_write_pubkey_der(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
+            mbedtls_pk_write_pubkey_der(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
         } {
             Err(Error::Asn1BufTooSmall) => Ok(None),
             Err(e) => Err(e),
@@ -717,14 +715,14 @@ impl Pk {
 
     pub fn write_public_der_vec(&mut self) -> Result<Vec<u8>> {
         crate::private::alloc_vec_repeat(
-            |buf, size| unsafe { pk_write_pubkey_der(&mut self.inner, buf, size) },
+            |buf, size| unsafe { mbedtls_pk_write_pubkey_der(&mut self.inner, buf, size) },
             true,
         )
     }
 
     pub fn write_public_pem<'buf>(&mut self, buf: &'buf mut [u8]) -> Result<Option<&'buf [u8]>> {
         match unsafe {
-            pk_write_pubkey_pem(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
+            mbedtls_pk_write_pubkey_pem(&mut self.inner, buf.as_mut_ptr(), buf.len()).into_result()
         } {
             Err(Error::Base64BufferTooSmall) => Ok(None),
             Err(e) => Err(e),
@@ -734,7 +732,7 @@ impl Pk {
 
     pub fn write_public_pem_string(&mut self) -> Result<String> {
         crate::private::alloc_string_repeat(|buf, size| unsafe {
-            match pk_write_pubkey_pem(&mut self.inner, buf as _, size) {
+            match mbedtls_pk_write_pubkey_pem(&mut self.inner, buf as _, size) {
                 0 => crate::private::cstr_to_slice(buf as _).len() as _,
                 r => r,
             }
@@ -742,19 +740,19 @@ impl Pk {
     }
 }
 
-// pk_verify_ext
+// mbedtls_pk_verify_ext
 //
-// pk_info_from_type
-// pk_setup
-// pk_setup_rsa_alt
+// mbedtls_pk_info_from_type
+// mbedtls_pk_setup
+// mbedtls_pk_setup_rsa_alt
 //
-// pk_debug
-// pk_parse_keyfile
-// pk_parse_public_keyfile
-// pk_write_key_der
-// pk_write_key_pem
-// pk_write_pubkey_der
-// pk_write_pubkey_pem
+// mbedtls_pk_debug
+// mbedtls_pk_parse_keyfile
+// mbedtls_pk_parse_public_keyfile
+// mbedtls_pk_write_key_der
+// mbedtls_pk_write_key_pem
+// mbedtls_pk_write_pubkey_der
+// mbedtls_pk_write_pubkey_pem
 //
 
 #[cfg(test)]
@@ -1063,7 +1061,7 @@ iy6KC991zzvaWY/Ys+q/84Afqa+0qJKQnPuy/7F5GkVdQA/lfbhi
     }
 
     #[test]
-    fn custom_pk_obj() {
+    fn custom_mbedtls_pk_obj() {
         let pk = Pk::public_custom_algo(&[8, 0, 2], &[1, 2, 3, 4]).unwrap();
         assert_eq!(pk.pk_type(), PkType::Custom);
         assert_eq!(pk.custom_algo_id().unwrap(), &[8, 0, 2]);

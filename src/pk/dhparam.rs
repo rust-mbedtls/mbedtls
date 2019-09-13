@@ -10,11 +10,11 @@ use crate::error::{IntoResult, Result};
 use mbedtls_sys::*;
 
 define!(
-    #[c_ty(dhm_context)]
+    #[c_ty(mbedtls_dhm_context)]
     #[repr(C)]
     struct Dhm;
-    const init: fn() -> Self = dhm_init;
-    const drop: fn(&mut Self) = dhm_free;
+    const init: fn() -> Self = mbedtls_dhm_init;
+    const drop: fn(&mut Self) = mbedtls_dhm_free;
     impl<'a> Into<ptr> {}
 );
 
@@ -24,7 +24,7 @@ impl Dhm {
     /// When calling on PEM-encoded data, `params` must be NULL-terminated
     pub(crate) fn from_params(params: &[u8]) -> Result<Dhm> {
         let mut ret = Self::init();
-        unsafe { dhm_parse_dhm(&mut ret.inner, params.as_ptr(), params.len()) }.into_result()?;
+        unsafe { mbedtls_dhm_parse_dhm(&mut ret.inner, params.as_ptr(), params.len()) }.into_result()?;
         Ok(ret)
     }
 }

@@ -24,7 +24,7 @@ pub use self::os_entropy::OsEntropy;
 pub use self::rdrand::{Entropy as Rdseed, Nrbg as Rdrand};
 
 use crate::error::{Result, IntoResult};
-use mbedtls_sys::types::raw_types::{c_int, c_uchar};
+use mbedtls_sys::types::raw::{c_int, c_uchar};
 use mbedtls_sys::types::size_t;
 
 callback!(EntropyCallback:Sync(data: *mut c_uchar, len: size_t) -> c_int);

@@ -8,7 +8,7 @@
 
 use core::slice::from_raw_parts_mut;
 
-use mbedtls_sys::types::raw_types::{c_int, c_uchar, c_void};
+use mbedtls_sys::types::raw::{c_int, c_uchar, c_void};
 use mbedtls_sys::types::size_t;
 
 #[cfg(target_arch = "x86")]

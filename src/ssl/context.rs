@@ -11,7 +11,7 @@ use core_io::{self as io, Read, Write};
 #[cfg(feature = "std")]
 use std::io::{self, Read, Write};
 
-use mbedtls_sys::types::raw_types::{c_int, c_uchar, c_void};
+use mbedtls_sys::types::raw::{c_int, c_uchar, c_void};
 use mbedtls_sys::types::size_t;
 use mbedtls_sys::*;
 
@@ -49,7 +49,7 @@ impl<IO: Read + Write> IoCallback for IO {
         };
         match (&mut *(user_data as *mut IO)).read(::core::slice::from_raw_parts_mut(data, len)) {
             Ok(i) => i as c_int,
-            Err(_) => ::mbedtls_sys::ERR_NET_RECV_FAILED,
+            Err(_) => MBEDTLS_ERR_NET_RECV_FAILED,
         }
     }
 
@@ -65,7 +65,7 @@ impl<IO: Read + Write> IoCallback for IO {
         };
         match (&mut *(user_data as *mut IO)).write(::core::slice::from_raw_parts(data, len)) {
             Ok(i) => i as c_int,
-            Err(_) => ::mbedtls_sys::ERR_NET_SEND_FAILED,
+            Err(_) => MBEDTLS_ERR_NET_SEND_FAILED,
         }
     }
 
@@ -75,29 +75,29 @@ impl<IO: Read + Write> IoCallback for IO {
 }
 
 define!(
-    #[c_ty(ssl_context)]
+    #[c_ty(mbedtls_ssl_context)]
     struct Context<'config>;
-    const init: fn() -> Self = ssl_init;
-    const drop: fn(&mut Self) = ssl_free;
+    const init: fn() -> Self = mbedtls_ssl_init;
+    const drop: fn(&mut Self) = mbedtls_ssl_free;
     impl<'a> Into<ptr> {}
     impl<'a> UnsafeFrom<ptr> {}
 );
 
 pub struct Session<'ctx> {
-    inner: &'ctx mut ssl_context,
+    inner: &'ctx mut mbedtls_ssl_context,
 }
 
 #[cfg(feature = "threading")]
 unsafe impl<'ctx> Send for Session<'ctx> {}
 
 pub struct HandshakeContext<'ctx> {
-    inner: &'ctx mut ssl_context,
+    inner: &'ctx mut mbedtls_ssl_context,
 }
 
 impl<'config> Context<'config> {
     pub fn new(config: &'config Config) -> Result<Context<'config>> {
         let mut ret = Self::init();
-        unsafe { ssl_setup(&mut ret.inner, config.into()) }
+        unsafe { mbedtls_ssl_setup(&mut ret.inner, config.into()) }
             .into_result()
             .map(|_| ret)
     }
@@ -108,20 +108,20 @@ impl<'config> Context<'config> {
         hostname: Option<&str>,
     ) -> Result<Session<'c>> {
         unsafe {
-            ssl_session_reset(&mut self.inner).into_result()?;
+            mbedtls_ssl_session_reset(&mut self.inner).into_result()?;
             self.set_hostname(hostname)?;
 
-            ssl_set_bio(
+            mbedtls_ssl_set_bio(
                 &mut self.inner,
                 io.data_ptr(),
                 Some(F::call_send),
                 Some(F::call_recv),
                 None,
             );
-            match ssl_handshake(&mut self.inner).into_result() {
+            match mbedtls_ssl_handshake(&mut self.inner).into_result() {
                 Err(e) => {
                     // safely end borrow of io
-                    ssl_set_bio(&mut self.inner, ::core::ptr::null_mut(), None, None, None);
+                    mbedtls_ssl_set_bio(&mut self.inner, ::core::ptr::null_mut(), None, None, None);
                     Err(e)
                 }
                 Ok(_) => Ok(Session {
@@ -148,7 +148,7 @@ impl<'config> Context<'config> {
         if let Some(s) = hostname {
             let cstr = ::std::ffi::CString::new(s).map_err(|_| Error::SslBadInputData)?;
             unsafe {
-                ssl_set_hostname(&mut self.inner, cstr.as_ptr())
+                mbedtls_ssl_set_hostname(&mut self.inner, cstr.as_ptr())
                     .into_result()
                     .map(|_| ())
             }
@@ -164,7 +164,7 @@ impl<'config> Context<'config> {
 
 impl<'ctx> HandshakeContext<'ctx> {
     pub fn set_authmode(&mut self, am: AuthMode) {
-        unsafe { ssl_set_hs_authmode(self.inner, am.into()) }
+        unsafe { mbedtls_ssl_set_hs_authmode(self.inner, am.into()) }
     }
 
     pub fn set_ca_list<C: Into<&'ctx mut LinkedCertificate>>(
@@ -173,7 +173,7 @@ impl<'ctx> HandshakeContext<'ctx> {
         crl: Option<&'ctx mut Crl>,
     ) {
         unsafe {
-            ssl_set_hs_ca_chain(
+            mbedtls_ssl_set_hs_ca_chain(
                 self.inner,
                 list.map(Into::into)
                     .map(Into::into)
@@ -193,7 +193,7 @@ impl<'ctx> HandshakeContext<'ctx> {
         key: &'ctx mut crate::pk::Pk,
     ) -> Result<()> {
         unsafe {
-            ssl_set_hs_own_cert(self.inner, chain.into().into(), key.into())
+            mbedtls_ssl_set_hs_own_cert(self.inner, chain.into().into(), key.into())
                 .into_result()
                 .map(|_| ())
         }
@@ -208,8 +208,8 @@ impl<'ctx> ::core::ops::Deref for HandshakeContext<'ctx> {
     }
 }
 
-impl<'ctx> UnsafeFrom<*mut ssl_context> for HandshakeContext<'ctx> {
-    unsafe fn from(ctx: *mut ssl_context) -> Option<HandshakeContext<'ctx>> {
+impl<'ctx> UnsafeFrom<*mut mbedtls_ssl_context> for HandshakeContext<'ctx> {
+    unsafe fn from(ctx: *mut mbedtls_ssl_context) -> Option<HandshakeContext<'ctx>> {
         ctx.as_mut().map(|ctx| HandshakeContext { inner: ctx })
     }
 }
@@ -228,7 +228,7 @@ impl<'a> Session<'a> {
     /// Return the number of bytes currently available to read that
     /// are stored in the Session's internal read buffer
     pub fn bytes_available(&self) -> usize {
-        unsafe { ssl_get_bytes_avail(self.inner) }
+        unsafe { mbedtls_ssl_get_bytes_avail(self.inner) }
     }
 
     pub fn version(&self) -> Version {
@@ -256,11 +256,11 @@ impl<'a> Session<'a> {
     }
 
     pub fn peer_cert(&self) -> Option<crate::x509::certificate::Iter> {
-        unsafe { UnsafeFrom::from(ssl_get_peer_cert(self.inner)) }
+        unsafe { UnsafeFrom::from(mbedtls_ssl_get_peer_cert(self.inner)) }
     }
 
     pub fn verify_result(&self) -> StdResult<(), VerifyError> {
-        match unsafe { ssl_get_verify_result(self.inner) } {
+        match unsafe { mbedtls_ssl_get_verify_result(self.inner) } {
             0 => Ok(()),
             flags => Err(VerifyError::from_bits_truncate(flags)),
         }
@@ -269,7 +269,7 @@ impl<'a> Session<'a> {
 
 impl<'a> Read for Session<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match unsafe { ssl_read(self.inner, buf.as_mut_ptr(), buf.len()).into_result() } {
+        match unsafe { mbedtls_ssl_read(self.inner, buf.as_mut_ptr(), buf.len()).into_result() } {
             Err(Error::SslPeerCloseNotify) => Ok(0),
             Err(e) => Err(crate::private::error_to_io_error(e)),
             Ok(i) => Ok(i as usize),
@@ -279,7 +279,7 @@ impl<'a> Read for Session<'a> {
 
 impl<'a> Write for Session<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match unsafe { ssl_write(self.inner, buf.as_ptr(), buf.len()).into_result() } {
+        match unsafe { mbedtls_ssl_write(self.inner, buf.as_ptr(), buf.len()).into_result() } {
             Err(Error::SslPeerCloseNotify) => Ok(0),
             Err(e) => Err(crate::private::error_to_io_error(e)),
             Ok(i) => Ok(i as usize),
@@ -294,89 +294,89 @@ impl<'a> Write for Session<'a> {
 impl<'a> Drop for Session<'a> {
     fn drop(&mut self) {
         unsafe {
-            ssl_close_notify(self.inner);
-            ssl_set_bio(self.inner, ::core::ptr::null_mut(), None, None, None);
+            mbedtls_ssl_close_notify(self.inner);
+            mbedtls_ssl_set_bio(self.inner, ::core::ptr::null_mut(), None, None, None);
         }
     }
 }
 
-// ssl_get_alpn_protocol
-// ssl_get_max_frag_len
-// ssl_get_record_expansion
-// ssl_get_verify_result
-// ssl_get_version
-// ssl_renegotiate
-// ssl_send_alert_message
-// ssl_set_client_transport_id
-// ssl_set_hs_psk
-// ssl_set_timer_cb
+// mbedtls_ssl_get_alpn_protocol
+// mbedtls_ssl_get_max_frag_len
+// mbedtls_ssl_get_record_expansion
+// mbedtls_ssl_get_verify_result
+// mbedtls_ssl_get_version
+// mbedtls_ssl_renegotiate
+// mbedtls_ssl_send_alert_message
+// mbedtls_ssl_set_client_transport_id
+// mbedtls_ssl_set_hs_psk
+// mbedtls_ssl_set_timer_cb
 //
-// ssl_handshake_step
+// mbedtls_ssl_handshake_step
 //
 // CLIENT SIDE SESSIONS
-// ssl_session_free
-// ssl_session_init
-// ssl_get_session
-// ssl_set_session
+// mbedtls_ssl_session_free
+// mbedtls_ssl_session_init
+// mbedtls_ssl_get_session
+// mbedtls_ssl_set_session
 //
 // SERVER SIDE SESSIONS (ssl_conf_session_cache)
-// ssl_cache_free
-// ssl_cache_get
-// ssl_cache_init
-// ssl_cache_set
-// ssl_cache_set_max_entries
+// mbedtls_ssl_cache_free
+// mbedtls_ssl_cache_get
+// mbedtls_ssl_cache_init
+// mbedtls_ssl_cache_set
+// mbedtls_ssl_cache_set_max_entries
 //
 // CIPHER SUITES
-// ssl_ciphersuite_from_id
-// ssl_ciphersuite_from_string
-// ssl_ciphersuite_uses_ec
-// ssl_ciphersuite_uses_psk
-// ssl_get_ciphersuite_id
-// ssl_get_ciphersuite_name
-// ssl_get_ciphersuite_sig_pk_alg
-// ssl_list_ciphersuites
+// mbedtls_ssl_ciphersuite_from_id
+// mbedtls_ssl_ciphersuite_from_string
+// mbedtls_ssl_ciphersuite_uses_ec
+// mbedtls_ssl_ciphersuite_uses_psk
+// mbedtls_ssl_get_ciphersuite_id
+// mbedtls_ssl_get_ciphersuite_name
+// mbedtls_ssl_get_ciphersuite_sig_pk_alg
+// mbedtls_ssl_list_ciphersuites
 //
 // DTLS SERVER COOKIES (ssl_conf_dtls_cookies)
-// ssl_cookie_check
-// ssl_cookie_free
-// ssl_cookie_init
-// ssl_cookie_set_timeout
-// ssl_cookie_setup
-// ssl_cookie_write
+// mbedtls_ssl_cookie_check
+// mbedtls_ssl_cookie_free
+// mbedtls_ssl_cookie_init
+// mbedtls_ssl_cookie_set_timeout
+// mbedtls_ssl_cookie_setup
+// mbedtls_ssl_cookie_write
 //
 // INTERNAL
-// ssl_check_cert_usage
-// ssl_check_curve
-// ssl_check_sig_hash
-// ssl_derive_keys
-// ssl_dtls_replay_check
-// ssl_dtls_replay_update
-// ssl_fetch_input
-// ssl_flush_output
-// ssl_handshake_client_step
-// ssl_handshake_free
-// ssl_handshake_server_step
-// ssl_handshake_wrapup
-// ssl_hash_from_md_alg
-// ssl_md_alg_from_hash
-// ssl_optimize_checksum
-// ssl_parse_certificate
-// ssl_parse_change_cipher_spec
-// ssl_parse_finished
-// ssl_pk_alg_from_sig
-// ssl_psk_derive_premaster
-// ssl_read_record
-// ssl_read_version
-// ssl_recv_flight_completed
-// ssl_resend
-// ssl_reset_checksum
-// ssl_send_fatal_handshake_failure
-// ssl_send_flight_completed
-// ssl_sig_from_pk
-// ssl_transform_free
-// ssl_write_certificate
-// ssl_write_change_cipher_spec
-// ssl_write_finished
-// ssl_write_record
-// ssl_write_version
+// mbedtls_ssl_check_cert_usage
+// mbedtls_ssl_check_curve
+// mbedtls_ssl_check_sig_hash
+// mbedtls_ssl_derive_keys
+// mbedtls_ssl_dtls_replay_check
+// mbedtls_ssl_dtls_replay_update
+// mbedtls_ssl_fetch_input
+// mbedtls_ssl_flush_output
+// mbedtls_ssl_handshake_client_step
+// mbedtls_ssl_handshake_free
+// mbedtls_ssl_handshake_server_step
+// mbedtls_ssl_handshake_wrapup
+// mbedtls_ssl_hash_from_md_alg
+// mbedtls_ssl_md_alg_from_hash
+// mbedtls_ssl_optimize_checksum
+// mbedtls_ssl_parse_certificate
+// mbedtls_ssl_parse_change_cipher_spec
+// mbedtls_ssl_parse_finished
+// mbedtls_ssl_pk_alg_from_sig
+// mbedtls_ssl_psk_derive_premaster
+// mbedtls_ssl_read_record
+// mbedtls_ssl_read_version
+// mbedtls_ssl_recv_flight_completed
+// mbedtls_ssl_resend
+// mbedtls_ssl_reset_checksum
+// mbedtls_ssl_send_fatal_handshake_failure
+// mbedtls_ssl_send_flight_completed
+// mbedtls_ssl_sig_from_pk
+// mbedtls_ssl_transform_free
+// mbedtls_ssl_write_certificate
+// mbedtls_ssl_write_change_cipher_spec
+// mbedtls_ssl_write_finished
+// mbedtls_ssl_write_record
+// mbedtls_ssl_write_version
 //

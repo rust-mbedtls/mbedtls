@@ -34,18 +34,18 @@ enum SavedCipher {
 // Custom serialization in serde.rs to force encoding as sequence.
 #[derive(Deserialize)]
 pub struct SavedRawCipher {
-    cipher_id: cipher_id_t,
-    cipher_mode: cipher_mode_t,
+    cipher_id: mbedtls_cipher_id_t,
+    cipher_mode: mbedtls_cipher_mode_t,
     key_bit_len: u32,
-    context: Bytes<cipher_context_t>,
+    context: Bytes<mbedtls_cipher_context_t>,
     algorithm_ctx: AlgorithmContext,
 }
 
 #[derive(Serialize, Deserialize)]
 enum AlgorithmContext {
-    Aes(Bytes<aes_context>),
-    Des(Bytes<des_context>),
-    Des3(Bytes<des3_context>),
+    Aes(Bytes<mbedtls_aes_context>),
+    Des(Bytes<mbedtls_des_context>),
+    Des3(Bytes<mbedtls_des3_context>),
 }
 
 // Serialization support for cipher structs. We only support serialization for traditional (not
@@ -70,22 +70,22 @@ impl<Op: Operation> Serialize for Cipher<Op, Traditional, CipherData> {
             // structures. If adding GCM/CCM support, be aware that they don't use the same
             // context types as the conventional modes.
             let algorithm_ctx = match (cipher_id, cipher_mode) {
-                (CIPHER_ID_AES, MODE_CBC)
-                | (CIPHER_ID_AES, MODE_CTR)
-                | (CIPHER_ID_AES, MODE_CFB) => {
-                    let mut aes_context = *(cipher_context.cipher_ctx as *const aes_context);
+                (MBEDTLS_CIPHER_ID_AES, MBEDTLS_MODE_CBC)
+                | (MBEDTLS_CIPHER_ID_AES, MBEDTLS_MODE_CTR)
+                | (MBEDTLS_CIPHER_ID_AES, MBEDTLS_MODE_CFB) => {
+                    let mut aes_context = *(cipher_context.cipher_ctx as *const mbedtls_aes_context);
                     aes_context.rk = ::core::ptr::null_mut();
                     AlgorithmContext::Aes(Bytes(aes_context))
                 }
-                (CIPHER_ID_DES, MODE_CBC)
-                | (CIPHER_ID_DES, MODE_CTR)
-                | (CIPHER_ID_DES, MODE_CFB) => {
-                    AlgorithmContext::Des(Bytes(*(cipher_context.cipher_ctx as *const des_context)))
+                (MBEDTLS_CIPHER_ID_DES, MBEDTLS_MODE_CBC)
+                | (MBEDTLS_CIPHER_ID_DES, MBEDTLS_MODE_CTR)
+                | (MBEDTLS_CIPHER_ID_DES, MBEDTLS_MODE_CFB) => {
+                    AlgorithmContext::Des(Bytes(*(cipher_context.cipher_ctx as *const mbedtls_des_context)))
                 }
-                (CIPHER_ID_3DES, MODE_CBC)
-                | (CIPHER_ID_3DES, MODE_CTR)
-                | (CIPHER_ID_3DES, MODE_CFB) => AlgorithmContext::Des3(Bytes(
-                    *(cipher_context.cipher_ctx as *const des3_context),
+                (MBEDTLS_CIPHER_ID_3DES, MBEDTLS_MODE_CBC)
+                | (MBEDTLS_CIPHER_ID_3DES, MBEDTLS_MODE_CTR)
+                | (MBEDTLS_CIPHER_ID_3DES, MBEDTLS_MODE_CFB) => AlgorithmContext::Des3(Bytes(
+                    *(cipher_context.cipher_ctx as *const mbedtls_des3_context),
                 )),
                 _ => {
                     return Err(ser::Error::custom(
@@ -156,7 +156,7 @@ impl<'de, Op: Operation> Deserialize<'de> for Cipher<Op, Traditional, CipherData
             }
         };
 
-        if raw.cipher_mode == MODE_CBC {
+        if raw.cipher_mode == MBEDTLS_MODE_CBC {
             raw_cipher
                 .set_padding(padding)
                 .map_err(|_| de::Error::invalid_value(
@@ -169,19 +169,19 @@ impl<'de, Op: Operation> Deserialize<'de> for Cipher<Op, Traditional, CipherData
             let cipher_context = &mut raw_cipher.inner;
 
             match (raw.cipher_id, raw.algorithm_ctx) {
-                (CIPHER_ID_AES, AlgorithmContext::Aes(Bytes(aes_ctx))) => {
-                    let ret_aes_ctx = cipher_context.cipher_ctx as *mut aes_context;
+                (MBEDTLS_CIPHER_ID_AES, AlgorithmContext::Aes(Bytes(aes_ctx))) => {
+                    let ret_aes_ctx = cipher_context.cipher_ctx as *mut mbedtls_aes_context;
                     *ret_aes_ctx = aes_ctx;
                     // aes_ctx.rk needs to be a pointer to aes_ctx.buf, which holds the round keys.
                     // We don't adjust for the padding needed on VIA Padlock (see definition of
                     // mbedtls_aes_context in the mbedTLS source).
                     (*ret_aes_ctx).rk = &mut (*ret_aes_ctx).buf[0];
                 }
-                (CIPHER_ID_DES, AlgorithmContext::Des(Bytes(des_ctx))) => {
-                    *(cipher_context.cipher_ctx as *mut des_context) = des_ctx
+                (MBEDTLS_CIPHER_ID_DES, AlgorithmContext::Des(Bytes(des_ctx))) => {
+                    *(cipher_context.cipher_ctx as *mut mbedtls_des_context) = des_ctx
                 }
-                (CIPHER_ID_3DES, AlgorithmContext::Des3(Bytes(des3_ctx))) => {
-                    *(cipher_context.cipher_ctx as *mut des3_context) = des3_ctx
+                (MBEDTLS_CIPHER_ID_3DES, AlgorithmContext::Des3(Bytes(des3_ctx))) => {
+                    *(cipher_context.cipher_ctx as *mut mbedtls_des3_context) = des3_ctx
                 }
                 _ => {
                     return Err(de::Error::invalid_value(
@@ -290,25 +290,25 @@ impl<'de, T: BytesSerde> Deserialize<'de> for Bytes<T> {
     }
 }
 
-unsafe impl BytesSerde for cipher_context_t {}
-unsafe impl BytesSerde for aes_context {}
-unsafe impl BytesSerde for des_context {}
-unsafe impl BytesSerde for des3_context {}
+unsafe impl BytesSerde for mbedtls_cipher_context_t {}
+unsafe impl BytesSerde for mbedtls_aes_context {}
+unsafe impl BytesSerde for mbedtls_des_context {}
+unsafe impl BytesSerde for mbedtls_des3_context {}
 
 // If the C API changes, the serde implementation needs to be reviewed for correctness.
 
-unsafe fn _check_cipher_context_t_size(ctx: cipher_context_t) -> [u8; 96] {
+unsafe fn _check_cipher_context_t_size(ctx: mbedtls_cipher_context_t) -> [u8; 88] {
     ::core::mem::transmute(ctx)
 }
 
-unsafe fn _check_aes_context_size(ctx: aes_context) -> [u8; 288] {
+unsafe fn _check_aes_context_size(ctx: mbedtls_aes_context) -> [u8; 288] {
     ::core::mem::transmute(ctx)
 }
 
-unsafe fn _check_des_context_size(ctx: des_context) -> [u8; 128] {
+unsafe fn _check_des_context_size(ctx: mbedtls_des_context) -> [u8; 128] {
     ::core::mem::transmute(ctx)
 }
 
-unsafe fn _check_des3_context_size(ctx: des3_context) -> [u8; 384] {
+unsafe fn _check_des3_context_size(ctx: mbedtls_des3_context) -> [u8; 384] {
     ::core::mem::transmute(ctx)
 }

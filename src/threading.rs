@@ -19,7 +19,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use core::ptr;
 
-use mbedtls_sys::types::raw_types::c_int;
+use mbedtls_sys::types::raw::c_int;
 
 pub struct StaticMutex {
     guard: Option<MutexGuard<'static, ()>>,

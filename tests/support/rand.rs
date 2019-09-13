@@ -10,10 +10,11 @@ extern crate core;
 extern crate mbedtls_sys;
 extern crate rand;
 
-use self::mbedtls_sys::types::raw_types::{c_int, c_uchar, c_void};
-use self::mbedtls_sys::types::size_t;
+use mbedtls_sys::types::raw::{c_int, c_uchar, c_void};
+use mbedtls_sys::types::size_t;
 
-use self::rand::{Rng, XorShiftRng};
+use rand_xorshift::XorShiftRng;
+use rand::{RngCore, SeedableRng};
 
 /// Not cryptographically secure!!! Use for testing only!!!
 pub struct TestRandom(XorShiftRng);
@@ -33,5 +34,5 @@ impl crate::mbedtls::rng::RngCallback for TestRandom {
 
 /// Not cryptographically secure!!! Use for testing only!!!
 pub fn test_rng() -> TestRandom {
-    TestRandom(XorShiftRng::new_unseeded())
+    TestRandom(XorShiftRng::from_seed([1u8; 16]))
 }

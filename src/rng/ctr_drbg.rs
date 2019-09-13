@@ -6,34 +6,35 @@
  * option. This file may not be copied, modified, or distributed except
  * according to those terms. */
 
-use mbedtls_sys::types::raw_types::{c_int, c_uchar, c_void};
+use mbedtls_sys::types::raw::{c_int, c_uchar, c_void};
 use mbedtls_sys::types::size_t;
-pub use mbedtls_sys::CTR_DRBG_RESEED_INTERVAL as RESEED_INTERVAL;
+pub use mbedtls_sys::MBEDTLS_CTR_DRBG_RESEED_INTERVAL as RESEED_INTERVAL;
 use mbedtls_sys::{
-    ctr_drbg_random, ctr_drbg_reseed, ctr_drbg_seed, ctr_drbg_set_prediction_resistance,
-    ctr_drbg_update, CTR_DRBG_PR_OFF, CTR_DRBG_PR_ON,
+    mbedtls_ctr_drbg_random, mbedtls_ctr_drbg_reseed, mbedtls_ctr_drbg_seed,
+    mbedtls_ctr_drbg_set_prediction_resistance, mbedtls_ctr_drbg_update,
+    MBEDTLS_CTR_DRBG_PR_OFF, MBEDTLS_CTR_DRBG_PR_ON,
 };
 
 use super::{EntropyCallback, RngCallback};
 use crate::error::{IntoResult, Result};
 
 // ==== BEGIN IMMOVABLE TYPE KLUDGE ====
-// `ctr_drbg_context` inlines an `aes_context`, which is immovable. See
+// `mbedtls_ctr_drbg_context` inlines an `aes_context`, which is immovable. See
 // https://github.com/ARMmbed/mbedtls/issues/2147. We work around this
 // by always boxing up the context, which requires this module to depend on
 // std/alloc.
 //
-// If `ctr_drbg_context` were moveable, this entire section could be replaced
+// If `mbedtls_ctr_drbg_context` were moveable, this entire section could be replaced
 // by basically:
 // ```
 // define!(
-//     #[c_ty(ctr_drbg_context)]
+//     #[c_ty(mbedtls_ctr_drbg_context)]
 //     struct CtrDrbg<'entropy>;
 //     fn init() {
-//         ctr_drbg_init
+//         mbedtls_ctr_drbg_init
 //     }
 //     fn drop() {
-//         ctr_drbg_free
+//         mbedtls_ctr_drbg_free
 //     }
 // );
 // ```
@@ -45,10 +46,10 @@ use core::ops::{Deref, DerefMut};
 
 mod private {
     use core::marker::PhantomData;
-    use mbedtls_sys::{ctr_drbg_context, ctr_drbg_free, ctr_drbg_init};
+    use mbedtls_sys::{mbedtls_ctr_drbg_context, mbedtls_ctr_drbg_free, mbedtls_ctr_drbg_init};
 
     pub struct CtrDrbgInner<'entropy> {
-        pub(super) inner: ctr_drbg_context,
+        pub(super) inner: mbedtls_ctr_drbg_context,
         r: PhantomData<&'entropy ()>,
     }
 
@@ -56,7 +57,7 @@ mod private {
         pub(super) fn init() -> Self {
             let mut inner = ::core::mem::MaybeUninit::uninit();
             let inner = unsafe {
-                ctr_drbg_init(inner.as_mut_ptr());
+                mbedtls_ctr_drbg_init(inner.as_mut_ptr());
                 inner.assume_init()
             };
             CtrDrbgInner {
@@ -68,7 +69,7 @@ mod private {
 
     impl<'entropy> Drop for CtrDrbgInner<'entropy> {
         fn drop(&mut self) {
-            unsafe { ctr_drbg_free(&mut self.inner) };
+            unsafe { mbedtls_ctr_drbg_free(&mut self.inner) };
         }
     }
 }
@@ -112,7 +113,7 @@ impl<'entropy> CtrDrbg<'entropy> {
     ) -> Result<CtrDrbg<'entropy>> {
         let mut ret = Self::init();
         unsafe {
-            ctr_drbg_seed(
+            mbedtls_ctr_drbg_seed(
                 &mut ret.inner,
                 Some(F::call),
                 source.data_ptr(),
@@ -127,7 +128,7 @@ impl<'entropy> CtrDrbg<'entropy> {
     }
 
     pub fn prediction_resistance(&self) -> bool {
-        if self.inner.prediction_resistance == CTR_DRBG_PR_OFF {
+        if self.inner.prediction_resistance == MBEDTLS_CTR_DRBG_PR_OFF {
             false
         } else {
             true
@@ -136,21 +137,21 @@ impl<'entropy> CtrDrbg<'entropy> {
 
     pub fn set_prediction_resistance(&mut self, pr: bool) {
         unsafe {
-            ctr_drbg_set_prediction_resistance(
+            mbedtls_ctr_drbg_set_prediction_resistance(
                 &mut self.inner,
-                if pr { CTR_DRBG_PR_ON } else { CTR_DRBG_PR_OFF },
+                if pr { MBEDTLS_CTR_DRBG_PR_ON } else { MBEDTLS_CTR_DRBG_PR_OFF },
             )
         }
     }
 
     getter!(entropy_len() -> size_t = .entropy_len);
-    setter!(set_entropy_len(len: size_t) = ctr_drbg_set_entropy_len);
+    setter!(set_entropy_len(len: size_t) = mbedtls_ctr_drbg_set_entropy_len);
     getter!(reseed_interval() -> c_int = .reseed_interval);
-    setter!(set_reseed_interval(i: c_int) = ctr_drbg_set_reseed_interval);
+    setter!(set_reseed_interval(i: c_int) = mbedtls_ctr_drbg_set_reseed_interval);
 
     pub fn reseed(&mut self, additional_entropy: Option<&[u8]>) -> Result<()> {
         unsafe {
-            ctr_drbg_reseed(
+            mbedtls_ctr_drbg_reseed(
                 &mut self.inner,
                 additional_entropy
                     .map(<[_]>::as_ptr)
@@ -163,21 +164,21 @@ impl<'entropy> CtrDrbg<'entropy> {
     }
 
     pub fn update(&mut self, entropy: &[u8]) {
-        unsafe { ctr_drbg_update(&mut self.inner, entropy.as_ptr(), entropy.len()) };
+        unsafe { mbedtls_ctr_drbg_update(&mut self.inner, entropy.as_ptr(), entropy.len()) };
     }
 
     // TODO:
     //
-    // ctr_drbg_random_with_add
-    // ctr_drbg_write_seed_file
-    // ctr_drbg_update_seed_file
+    // mbedtls_ctr_drbg_random_with_add
+    // mbedtls_ctr_drbg_write_seed_file
+    // mbedtls_ctr_drbg_update_seed_file
     //
 }
 
 impl<'entropy> RngCallback for CtrDrbg<'entropy> {
     #[inline(always)]
     unsafe extern "C" fn call(user_data: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
-        ctr_drbg_random(user_data, data, len)
+        mbedtls_ctr_drbg_random(user_data, data, len)
     }
 
     fn data_ptr(&mut self) -> *mut c_void {

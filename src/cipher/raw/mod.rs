@@ -13,162 +13,152 @@ use crate::error::{Error, IntoResult, Result};
 mod serde;
 
 define!(
-    #[c_ty(cipher_id_t)]
+    #[c_ty(mbedtls_cipher_id_t)]
     enum CipherId {
-        None = CIPHER_ID_NONE,
-        Null = CIPHER_ID_NULL,
-        Aes = CIPHER_ID_AES,
-        Des = CIPHER_ID_DES,
-        Des3 = CIPHER_ID_3DES,
-        Camellia = CIPHER_ID_CAMELLIA,
-        Blowfish = CIPHER_ID_BLOWFISH,
-        Arc4 = CIPHER_ID_ARC4,
+        None = MBEDTLS_CIPHER_ID_NONE,
+        Null = MBEDTLS_CIPHER_ID_NULL,
+        Aes = MBEDTLS_CIPHER_ID_AES,
+        Des = MBEDTLS_CIPHER_ID_DES,
+        Des3 = MBEDTLS_CIPHER_ID_3DES,
+        Camellia = MBEDTLS_CIPHER_ID_CAMELLIA,
+        Blowfish = MBEDTLS_CIPHER_ID_BLOWFISH,
+        Arc4 = MBEDTLS_CIPHER_ID_ARC4,
     }
 );
 
-impl From<cipher_id_t> for CipherId {
-    fn from(inner: cipher_id_t) -> Self {
+impl From<mbedtls_cipher_id_t> for CipherId {
+    fn from(inner: mbedtls_cipher_id_t) -> Self {
         match inner {
-            CIPHER_ID_NONE => CipherId::None,
-            CIPHER_ID_NULL => CipherId::Null,
-            CIPHER_ID_AES => CipherId::Aes,
-            CIPHER_ID_DES => CipherId::Des,
-            CIPHER_ID_3DES => CipherId::Des3,
-            CIPHER_ID_CAMELLIA => CipherId::Camellia,
-            CIPHER_ID_BLOWFISH => CipherId::Blowfish,
-            CIPHER_ID_ARC4 => CipherId::Arc4,
+            MBEDTLS_CIPHER_ID_NONE => CipherId::None,
+            MBEDTLS_CIPHER_ID_NULL => CipherId::Null,
+            MBEDTLS_CIPHER_ID_AES => CipherId::Aes,
+            MBEDTLS_CIPHER_ID_DES => CipherId::Des,
+            MBEDTLS_CIPHER_ID_3DES => CipherId::Des3,
+            MBEDTLS_CIPHER_ID_CAMELLIA => CipherId::Camellia,
+            MBEDTLS_CIPHER_ID_BLOWFISH => CipherId::Blowfish,
+            MBEDTLS_CIPHER_ID_ARC4 => CipherId::Arc4,
             // This should be replaced with TryFrom once it is stable.
-            _ => panic!("Invalid cipher_id_t"),
+            _ => panic!("Invalid mbedtls_cipher_id_t"),
         }
     }
 }
 
 define!(
-    #[c_ty(cipher_mode_t)]
+    #[c_ty(mbedtls_cipher_mode_t)]
     #[derive(Copy, Clone, Eq, PartialEq)]
     enum CipherMode {
-        None = MODE_NONE,
-        ECB = MODE_ECB,
-        CBC = MODE_CBC,
-        CFB = MODE_CFB,
-        OFB = MODE_OFB,
-        CTR = MODE_CTR,
-        GCM = MODE_GCM,
-        STREAM = MODE_STREAM,
-        CCM = MODE_CCM,
-        KW = MODE_KW,
-        KWP = MODE_KWP,
+        None = MBEDTLS_MODE_NONE,
+        ECB = MBEDTLS_MODE_ECB,
+        CBC = MBEDTLS_MODE_CBC,
+        CFB = MBEDTLS_MODE_CFB,
+        OFB = MBEDTLS_MODE_OFB,
+        CTR = MBEDTLS_MODE_CTR,
+        GCM = MBEDTLS_MODE_GCM,
+        STREAM = MBEDTLS_MODE_STREAM,
+        CCM = MBEDTLS_MODE_CCM,
     }
 );
 
-impl From<cipher_mode_t> for CipherMode {
-    fn from(inner: cipher_mode_t) -> Self {
+impl From<mbedtls_cipher_mode_t> for CipherMode {
+    fn from(inner: mbedtls_cipher_mode_t) -> Self {
         match inner {
-            MODE_NONE => CipherMode::None,
-            MODE_ECB => CipherMode::ECB,
-            MODE_CBC => CipherMode::CBC,
-            MODE_CFB => CipherMode::CFB,
-            MODE_OFB => CipherMode::OFB,
-            MODE_CTR => CipherMode::CTR,
-            MODE_GCM => CipherMode::GCM,
-            MODE_STREAM => CipherMode::STREAM,
-            MODE_CCM => CipherMode::CCM,
-            MODE_KW => CipherMode::KW,
-            MODE_KWP => CipherMode::KWP,
+            MBEDTLS_MODE_NONE => CipherMode::None,
+            MBEDTLS_MODE_ECB => CipherMode::ECB,
+            MBEDTLS_MODE_CBC => CipherMode::CBC,
+            MBEDTLS_MODE_CFB => CipherMode::CFB,
+            MBEDTLS_MODE_OFB => CipherMode::OFB,
+            MBEDTLS_MODE_CTR => CipherMode::CTR,
+            MBEDTLS_MODE_GCM => CipherMode::GCM,
+            MBEDTLS_MODE_STREAM => CipherMode::STREAM,
+            MBEDTLS_MODE_CCM => CipherMode::CCM,
             // This should be replaced with TryFrom once it is stable.
-            _ => panic!("Invalid cipher_mode_t"),
+            _ => panic!("Invalid mbedtls_cipher_mode_t"),
         }
     }
 }
 
 define!(
-    #[c_ty(cipher_type_t)]
+    #[c_ty(mbedtls_cipher_type_t)]
     enum CipherType {
-        None = CIPHER_NONE,
-        Null = CIPHER_NULL,
-        Aes128Ecb = CIPHER_AES_128_ECB,
-        Aes192Ecb = CIPHER_AES_192_ECB,
-        Aes256Ecb = CIPHER_AES_256_ECB,
-        Aes128Cbc = CIPHER_AES_128_CBC,
-        Aes192Cbc = CIPHER_AES_192_CBC,
-        Aes256Cbc = CIPHER_AES_256_CBC,
-        Aes128Cfb128 = CIPHER_AES_128_CFB128,
-        Aes192Cfb128 = CIPHER_AES_192_CFB128,
-        Aes256Cfb128 = CIPHER_AES_256_CFB128,
-        Aes128Ctr = CIPHER_AES_128_CTR,
-        Aes192Ctr = CIPHER_AES_192_CTR,
-        Aes256Ctr = CIPHER_AES_256_CTR,
-        Aes128Gcm = CIPHER_AES_128_GCM,
-        Aes192Gcm = CIPHER_AES_192_GCM,
-        Aes256Gcm = CIPHER_AES_256_GCM,
-        Camellia128Ecb = CIPHER_CAMELLIA_128_ECB,
-        Camellia192Ecb = CIPHER_CAMELLIA_192_ECB,
-        Camellia256Ecb = CIPHER_CAMELLIA_256_ECB,
-        Camellia128Cbc = CIPHER_CAMELLIA_128_CBC,
-        Camellia192Cbc = CIPHER_CAMELLIA_192_CBC,
-        Camellia256Cbc = CIPHER_CAMELLIA_256_CBC,
-        Camellia128Cfb128 = CIPHER_CAMELLIA_128_CFB128,
-        Camellia192Cfb128 = CIPHER_CAMELLIA_192_CFB128,
-        Camellia256Cfb128 = CIPHER_CAMELLIA_256_CFB128,
-        Camellia128Ctr = CIPHER_CAMELLIA_128_CTR,
-        Camellia192Ctr = CIPHER_CAMELLIA_192_CTR,
-        Camellia256Ctr = CIPHER_CAMELLIA_256_CTR,
-        Camellia128Gcm = CIPHER_CAMELLIA_128_GCM,
-        Camellia192Gcm = CIPHER_CAMELLIA_192_GCM,
-        Camellia256Gcm = CIPHER_CAMELLIA_256_GCM,
-        DesEcb = CIPHER_DES_ECB,
-        DesCbc = CIPHER_DES_CBC,
-        DesEdeEcb = CIPHER_DES_EDE_ECB,
-        DesEdeCbc = CIPHER_DES_EDE_CBC,
-        DesEde3Ecb = CIPHER_DES_EDE3_ECB,
-        DesEde3Cbc = CIPHER_DES_EDE3_CBC,
-        BlowfishEcb = CIPHER_BLOWFISH_ECB,
-        BlowfishCbc = CIPHER_BLOWFISH_CBC,
-        BlowfishCfb64 = CIPHER_BLOWFISH_CFB64,
-        BlowfishCtr = CIPHER_BLOWFISH_CTR,
-        Arcfour128 = CIPHER_ARC4_128,
-        Aes128Ccm = CIPHER_AES_128_CCM,
-        Aes192Ccm = CIPHER_AES_192_CCM,
-        Aes256Ccm = CIPHER_AES_256_CCM,
-        Camellia128Ccm = CIPHER_CAMELLIA_128_CCM,
-        Camellia192Ccm = CIPHER_CAMELLIA_192_CCM,
-        Camellia256Ccm = CIPHER_CAMELLIA_256_CCM,
-        Aes128Kw = CIPHER_AES_128_KW,
-        Aes192Kw = CIPHER_AES_192_KW,
-        Aes256Kw = CIPHER_AES_256_KW,
-        Aes128Kwp = CIPHER_AES_128_KWP,
-        Aes192Kwp = CIPHER_AES_192_KWP,
-        Aes256Kwp = CIPHER_AES_256_KWP,
+        None = MBEDTLS_CIPHER_NONE,
+        Null = MBEDTLS_CIPHER_NULL,
+        Aes128Ecb = MBEDTLS_CIPHER_AES_128_ECB,
+        Aes192Ecb = MBEDTLS_CIPHER_AES_192_ECB,
+        Aes256Ecb = MBEDTLS_CIPHER_AES_256_ECB,
+        Aes128Cbc = MBEDTLS_CIPHER_AES_128_CBC,
+        Aes192Cbc = MBEDTLS_CIPHER_AES_192_CBC,
+        Aes256Cbc = MBEDTLS_CIPHER_AES_256_CBC,
+        Aes128Cfb128 = MBEDTLS_CIPHER_AES_128_CFB128,
+        Aes192Cfb128 = MBEDTLS_CIPHER_AES_192_CFB128,
+        Aes256Cfb128 = MBEDTLS_CIPHER_AES_256_CFB128,
+        Aes128Ctr = MBEDTLS_CIPHER_AES_128_CTR,
+        Aes192Ctr = MBEDTLS_CIPHER_AES_192_CTR,
+        Aes256Ctr = MBEDTLS_CIPHER_AES_256_CTR,
+        Aes128Gcm = MBEDTLS_CIPHER_AES_128_GCM,
+        Aes192Gcm = MBEDTLS_CIPHER_AES_192_GCM,
+        Aes256Gcm = MBEDTLS_CIPHER_AES_256_GCM,
+        Camellia128Ecb = MBEDTLS_CIPHER_CAMELLIA_128_ECB,
+        Camellia192Ecb = MBEDTLS_CIPHER_CAMELLIA_192_ECB,
+        Camellia256Ecb = MBEDTLS_CIPHER_CAMELLIA_256_ECB,
+        Camellia128Cbc = MBEDTLS_CIPHER_CAMELLIA_128_CBC,
+        Camellia192Cbc = MBEDTLS_CIPHER_CAMELLIA_192_CBC,
+        Camellia256Cbc = MBEDTLS_CIPHER_CAMELLIA_256_CBC,
+        Camellia128Cfb128 = MBEDTLS_CIPHER_CAMELLIA_128_CFB128,
+        Camellia192Cfb128 = MBEDTLS_CIPHER_CAMELLIA_192_CFB128,
+        Camellia256Cfb128 = MBEDTLS_CIPHER_CAMELLIA_256_CFB128,
+        Camellia128Ctr = MBEDTLS_CIPHER_CAMELLIA_128_CTR,
+        Camellia192Ctr = MBEDTLS_CIPHER_CAMELLIA_192_CTR,
+        Camellia256Ctr = MBEDTLS_CIPHER_CAMELLIA_256_CTR,
+        Camellia128Gcm = MBEDTLS_CIPHER_CAMELLIA_128_GCM,
+        Camellia192Gcm = MBEDTLS_CIPHER_CAMELLIA_192_GCM,
+        Camellia256Gcm = MBEDTLS_CIPHER_CAMELLIA_256_GCM,
+        DesEcb = MBEDTLS_CIPHER_DES_ECB,
+        DesCbc = MBEDTLS_CIPHER_DES_CBC,
+        DesEdeEcb = MBEDTLS_CIPHER_DES_EDE_ECB,
+        DesEdeCbc = MBEDTLS_CIPHER_DES_EDE_CBC,
+        DesEde3Ecb = MBEDTLS_CIPHER_DES_EDE3_ECB,
+        DesEde3Cbc = MBEDTLS_CIPHER_DES_EDE3_CBC,
+        BlowfishEcb = MBEDTLS_CIPHER_BLOWFISH_ECB,
+        BlowfishCbc = MBEDTLS_CIPHER_BLOWFISH_CBC,
+        BlowfishCfb64 = MBEDTLS_CIPHER_BLOWFISH_CFB64,
+        BlowfishCtr = MBEDTLS_CIPHER_BLOWFISH_CTR,
+        Arcfour128 = MBEDTLS_CIPHER_ARC4_128,
+        Aes128Ccm = MBEDTLS_CIPHER_AES_128_CCM,
+        Aes192Ccm = MBEDTLS_CIPHER_AES_192_CCM,
+        Aes256Ccm = MBEDTLS_CIPHER_AES_256_CCM,
+        Camellia128Ccm = MBEDTLS_CIPHER_CAMELLIA_128_CCM,
+        Camellia192Ccm = MBEDTLS_CIPHER_CAMELLIA_192_CCM,
+        Camellia256Ccm = MBEDTLS_CIPHER_CAMELLIA_256_CCM,
     }
 );
 
 define!(
-    #[c_ty(cipher_padding_t)]
+    #[c_ty(mbedtls_cipher_padding_t)]
     #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
     enum CipherPadding {
-        Pkcs7 = PADDING_PKCS7,
-        IsoIec78164 = PADDING_ONE_AND_ZEROS,
-        AnsiX923 = PADDING_ZEROS_AND_LEN,
-        Zeros = PADDING_ZEROS,
-        None = PADDING_NONE,
+        Pkcs7 = MBEDTLS_PADDING_PKCS7,
+        IsoIec78164 = MBEDTLS_PADDING_ONE_AND_ZEROS,
+        AnsiX923 = MBEDTLS_PADDING_ZEROS_AND_LEN,
+        Zeros = MBEDTLS_PADDING_ZEROS,
+        None = MBEDTLS_PADDING_NONE,
     }
 );
 
 define!(
-    #[c_ty(operation_t)]
+    #[c_ty(mbedtls_operation_t)]
     enum Operation {
-        None = OPERATION_NONE,
-        Decrypt = DECRYPT,
-        Encrypt = ENCRYPT,
+        None = MBEDTLS_OPERATION_NONE,
+        Decrypt = MBEDTLS_DECRYPT,
+        Encrypt = MBEDTLS_ENCRYPT,
     }
 );
 
 define!(
-    #[c_ty(cipher_context_t)]
+    #[c_ty(mbedtls_cipher_context_t)]
     #[repr(C)]
     struct Cipher;
-    const init: fn() -> Self = cipher_init;
-    const drop: fn(&mut Self) = cipher_free;
+    const init: fn() -> Self = mbedtls_cipher_init;
+    const drop: fn(&mut Self) = mbedtls_cipher_free;
     impl<'a> Into<ptr> {}
 );
 
@@ -184,9 +174,9 @@ impl Cipher {
         let mut ret = Self::init();
         unsafe {
             // Do setup with proper cipher_info based on algorithm, key length and mode
-            cipher_setup(
+            mbedtls_cipher_setup(
                 &mut ret.inner,
-                cipher_info_from_values(cipher_id.into(), key_bit_len as i32, cipher_mode.into())
+                mbedtls_cipher_info_from_values(cipher_id.into(), key_bit_len as i32, cipher_mode.into())
             )
             .into_result()?;
         }
@@ -196,7 +186,7 @@ impl Cipher {
     // Cipher set key - should be called after setup
     pub fn set_key(&mut self, op: Operation, key: &[u8]) -> Result<()> {
         unsafe {
-            cipher_setkey(
+            mbedtls_cipher_setkey(
                 &mut self.inner,
                 key.as_ptr(),
                 (key.len() * 8) as _,
@@ -207,21 +197,21 @@ impl Cipher {
     }
 
     pub fn set_padding(&mut self, padding: CipherPadding) -> Result<()> {
-        unsafe { cipher_set_padding_mode(&mut self.inner, padding.into()).into_result_discard() }
+        unsafe { mbedtls_cipher_set_padding_mode(&mut self.inner, padding.into()).into_result_discard() }
     }
 
     // Cipher set IV - should be called after setup
     pub fn set_iv(&mut self, iv: &[u8]) -> Result<()> {
-        unsafe { cipher_set_iv(&mut self.inner, iv.as_ptr(), iv.len()).into_result_discard() }
+        unsafe { mbedtls_cipher_set_iv(&mut self.inner, iv.as_ptr(), iv.len()).into_result_discard() }
     }
 
     pub fn reset(&mut self) -> Result<()> {
-        unsafe { cipher_reset(&mut self.inner).into_result_discard() }
+        unsafe { mbedtls_cipher_reset(&mut self.inner).into_result_discard() }
     }
 
     pub fn update(&mut self, indata: &[u8], outdata: &mut [u8]) -> Result<usize> {
         // Check that minimum required space is available in outdata buffer
-        let reqd_size = if unsafe { *self.inner.cipher_info }.mode == MODE_ECB {
+        let reqd_size = if unsafe { *self.inner.cipher_info }.mode == MBEDTLS_MODE_ECB {
             self.block_size()
         } else {
             indata.len() + self.block_size()
@@ -233,7 +223,7 @@ impl Cipher {
 
         let mut olen = 0;
         unsafe {
-            cipher_update(
+            mbedtls_cipher_update(
                 &mut self.inner,
                 indata.as_ptr(),
                 indata.len(),
@@ -253,19 +243,19 @@ impl Cipher {
 
         let mut olen = 0;
         unsafe {
-            cipher_finish(&mut self.inner, outdata.as_mut_ptr(), &mut olen).into_result()?;
+            mbedtls_cipher_finish(&mut self.inner, outdata.as_mut_ptr(), &mut olen).into_result()?;
         }
         Ok(olen)
     }
 
     pub fn write_tag(&mut self, tag: &mut [u8]) -> Result<()> {
         unsafe {
-            cipher_write_tag(&mut self.inner, tag.as_mut_ptr(), tag.len()).into_result_discard()
+            mbedtls_cipher_write_tag(&mut self.inner, tag.as_mut_ptr(), tag.len()).into_result_discard()
         }
     }
 
     pub fn check_tag(&mut self, tag: &[u8]) -> Result<()> {
-        unsafe { cipher_check_tag(&mut self.inner, tag.as_ptr(), tag.len()).into_result_discard() }
+        unsafe { mbedtls_cipher_check_tag(&mut self.inner, tag.as_ptr(), tag.len()).into_result_discard() }
     }
 
     // Utility function to get block size for the selected / setup cipher_info
@@ -281,8 +271,8 @@ impl Cipher {
     // Utility function to get mdoe for the selected / setup cipher_info
     pub fn is_authenticated(&self) -> bool {
         unsafe {
-            if (*self.inner.cipher_info).mode == MODE_GCM
-                || (*self.inner.cipher_info).mode == MODE_CCM
+            if (*self.inner.cipher_info).mode == MBEDTLS_MODE_GCM
+                || (*self.inner.cipher_info).mode == MBEDTLS_MODE_CCM
             {
                 return true;
             } else {
@@ -293,7 +283,7 @@ impl Cipher {
 
     // Utility function to set odd parity - used for DES keys
     pub fn set_parity(key: &mut [u8]) -> Result<()> {
-        unsafe { des_key_set_parity(key.as_mut_ptr()) }
+        unsafe { mbedtls_des_key_set_parity(key.as_mut_ptr()) }
         Ok(())
     }
 
@@ -320,7 +310,7 @@ impl Cipher {
         let iv_len = self.inner.iv_size;
         let mut cipher_len = cipher.len();
         unsafe {
-            cipher_auth_encrypt(
+            mbedtls_cipher_auth_encrypt(
                 &mut self.inner,
                 iv.as_ptr(),
                 iv_len,
@@ -355,7 +345,7 @@ impl Cipher {
         let iv_len = self.inner.iv_size;
         let mut plain_len = plain.len();
         unsafe {
-            cipher_auth_decrypt(
+            mbedtls_cipher_auth_decrypt(
                 &mut self.inner,
                 iv.as_ptr(),
                 iv_len,
@@ -382,7 +372,7 @@ impl Cipher {
         // return an empty slice, it doesn't panic.
         let mut total_len = 0;
 
-        if unsafe { *self.inner.cipher_info }.mode == MODE_ECB {
+        if unsafe { *self.inner.cipher_info }.mode == MBEDTLS_MODE_ECB {
             // ECB mode requires single-block updates
             for chunk in indata.chunks(self.block_size()) {
                 let len = self.update(chunk, &mut outdata[total_len..])?;
@@ -403,8 +393,13 @@ impl Cipher {
         }
         self.reset()?;
         unsafe {
-            cipher_cmac(&*self.inner.cipher_info, key.as_ptr(), (key.len() * 8) as _, data.as_ptr(), data.len(), 
-                        outdata.as_mut_ptr()).into_result()?;
+            mbedtls_cipher_cmac(
+                &*self.inner.cipher_info,
+                key.as_ptr(),
+                (key.len() * 8) as _, data.as_ptr(),
+                data.len(),
+                outdata.as_mut_ptr()
+            ).into_result()?;
         }
         Ok(())
     }

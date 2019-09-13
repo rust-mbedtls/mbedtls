@@ -9,7 +9,7 @@
 use mbedtls_sys::*;
 
 define!(
-    #[c_ty(x509_crt_profile)]
+    #[c_ty(mbedtls_x509_crt_profile)]
     #[repr(C)]
     struct Profile;
     impl<'a> Into<ptr> {}

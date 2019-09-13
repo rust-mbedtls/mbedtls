@@ -9,8 +9,8 @@
 #[cfg(not(feature = "std"))]
 use crate::alloc_prelude::*;
 
-use mbedtls_sys::types::raw_types::c_char;
-use mbedtls_sys::types::raw_types::{c_int, c_uchar};
+use mbedtls_sys::types::raw::c_char;
+use mbedtls_sys::types::raw::{c_int, c_uchar};
 use mbedtls_sys::types::size_t;
 
 use crate::error::{Error, IntoResult, Result};
