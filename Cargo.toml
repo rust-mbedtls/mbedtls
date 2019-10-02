@@ -47,6 +47,7 @@ rdrand = []
 pkcs12 = ["yasna"]
 kw = []
 self_test = []
+cmac = []
 
 [[example]]
 name = "client"
