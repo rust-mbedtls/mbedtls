@@ -53,6 +53,7 @@ pub use crate::error::{Error, Result};
 pub mod cipher;
 pub mod ecp;
 pub mod hash;
+#[cfg(feature="kw")]
 pub mod kw;
 pub mod pk;
 pub mod rng;
