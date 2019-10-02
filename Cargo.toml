@@ -45,6 +45,7 @@ sgx = ["std", "rust_threading", "rdrand"]
 rust_threading = ["threading", "std"]
 rdrand = []
 pkcs12 = ["yasna"]
+kw = []
 
 [[example]]
 name = "client"
