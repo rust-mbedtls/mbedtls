@@ -46,6 +46,7 @@ rust_threading = ["threading", "std"]
 rdrand = []
 pkcs12 = ["yasna"]
 kw = []
+self_test = []
 
 [[example]]
 name = "client"
@@ -73,6 +74,7 @@ path = "tests/pbkdf.rs"
 [[test]]
 name = "mbedtls_self_tests"
 path = "tests/mbedtls_self_tests.rs"
+required-features = ["self_test"]
 
 [[test]]
 name = "bignum"
