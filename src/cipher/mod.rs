@@ -241,6 +241,7 @@ impl Cipher<Decryption, Traditional, CipherData> {
     }
 }
 
+#[cfg(feature="cmac")]
 impl Cipher<Encryption, TraditionalNoIv, Fresh> {
     pub fn cmac(mut self,
                 key: &[u8],
@@ -306,6 +307,7 @@ impl<O: Operation, T: Type> Cipher<O, T, CipherData> {
     }
 }
 
+#[cfg(feature="cmac")]
 #[test]
 fn cmac() {
     // From NIST CAVS

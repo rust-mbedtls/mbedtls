@@ -386,6 +386,7 @@ impl Cipher {
         Ok(total_len)
     }
 
+    #[cfg(feature="cmac")]
     pub fn cmac(&mut self, key: &[u8], data: &[u8], outdata: &mut [u8]) -> Result<()> {
         // Check that outdata buffer has enough space
         if outdata.len() < self.block_size() {
@@ -431,6 +432,7 @@ fn one_part_ecb() {
     assert_eq!(&out[..len], b"\x69\xc4\xe0\xd8\x6a\x7b\x04\x30\xd8\xcd\xb7\x80\x70\xb4\xc5\x5a\x69\xc4\xe0\xd8\x6a\x7b\x04\x30\xd8\xcd\xb7\x80\x70\xb4\xc5\x5a");
 }
 
+#[cfg(feature="cmac")]
 #[test]
 fn cmac_test() {
     let mut c = Cipher::setup(CipherId::Aes, CipherMode::ECB, 128).unwrap();
